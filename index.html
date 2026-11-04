@@ -226,12 +226,12 @@ function drawMap(){cx.fillStyle='#17131d';cx.fillRect(0,0,VW,VH);
   cx.fillStyle=a.done&&b.done?'#c9a45a':'#4a4058';for(let i=2;i<st-1;i++)cx.fillRect(x1+(x2-x1)*i/st-2,y1+(y2-y1)*i/st-2,k+1,k+1)}
  nodeXY=[];for(const n of all.concat([MAP.boss])){const[x,y]=nxy(n),ss=s*(n.t=='B'?2:1),isA=av.includes(n),isS=isA&&av[sel]==n;
   if(isA){const pu=Math.sin(tick/8)*2+(isS?6:3);cx.fillStyle=isS?'#f2c447':'#8a6a3a';cx.fillRect(x-ss/2-pu,y-ss/2-pu,ss+pu*2,ss+pu*2);cx.fillStyle='#17131d';cx.fillRect(x-ss/2-pu+k,y-ss/2-pu+k,ss+pu*2-2*k,ss+pu*2-2*k)}
-  cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(SP[NODE[n.t].s],x-ss/2,y-ss/2,ss,ss);cx.globalAlpha=1;
+  cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(nodeIcon(n.t),x-ss/2,y-ss/2,ss,ss);cx.globalAlpha=1;
   if(n.done&&n!=pos){cx.fillStyle='#c9a45a';cx.fillRect(x-ss/2,y+ss/2+2,ss,k)}
   if(n==pos&&P)cx.drawImage(SP[P.ch.s],x+ss/2,y-ss/2,s*.8,s*.8);nodeXY.push([n,x,y,ss])}
  cx.font=`bold ${Math.max(16,Math.min(30,VW/40))}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#f2c447';cx.fillText(`ACT ${act}: ${ACTN[act-1].toUpperCase()}`,VW/2,78);
  const sn=av[sel];if(sn){cx.font='bold 16px "Courier New",monospace';cx.fillStyle='#e8e0d0';cx.fillText(`> ${NODE[sn.t].n.toUpperCase()} <`,VW/2,VH-40)}
- cx.textAlign='left';cx.font='bold 13px "Courier New",monospace';let ly=60;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(SP[NODE[t].s],VW-170,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),VW-140,ly+17);ly+=30}}
+ cx.textAlign='left';cx.font='bold 13px "Courier New",monospace';let ly=60;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(nodeIcon(t),VW-170,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),VW-140,ly+17);ly+=30}}
 function chooseNode(n){bankCoins();if(!avail().includes(n))return;if(pos)pos.done=true;n.done=true;pos=n;sel=0;run.floors++;if(has('mapr')&&run.floors%3==0&&P.hp<P.mhp){heal(1);log('Pilgrim’s Map: +1 Heart','#6fc8ff')}
  if(n.t=='M'||n.t=='E'||n.t=='B')startCombat(n.t);else if(n.t=='T')treasure();else if(n.t=='R')rest();else if(n.t=='$')shop();else event();hud();saveRun('node')}
 // ---------- castle floors: interconnected rooms ----------
@@ -743,7 +743,7 @@ function drawMinimap(){const cw=30,chh=20,gap=6,ox=VW-10-5*(cw+gap),oy=212;cx.fi
  const all=ML('map')>0,rx=r=>ox+r.gx*(cw+gap),ry=r=>oy+r.gy*(chh+gap);
  for(const r of F.rooms){if(!(r.seen||r.known||all))continue;for(const d in r.doors){const o=r.doors[d];if(d=='r'||d=='d'){cx.fillStyle='#8a7a5a';if(d=='r')cx.fillRect(rx(r)+cw,ry(r)+chh/2-2,gap,4);else cx.fillRect(rx(r)+cw/2-2,ry(r)+chh,4,gap)}}}
  for(const r of F.rooms){if(!(r.seen||r.known||all))continue;const cur=r==F.cur;cx.fillStyle=cur?'#ffd24a':r.seen?(r.L&&r.L.cleared?'#4a5a8a':'#8a3a3a'):'#2a2a40';cx.fillRect(rx(r),ry(r),cw,chh);cx.strokeStyle='#120c18';cx.lineWidth=2;cx.strokeRect(rx(r),ry(r),cw,chh);
-  const ic=r.kind=='boss'?'dragon':r.kind=='fairy'?'fchest':r.kind=='treasure'?'chest':null;if(ic&&(r.seen||r.known||all))cx.drawImage(SP[ic],rx(r)+cw/2-8,ry(r)+chh/2-8,16,16);if(cur)cx.drawImage(SP[P.ch.s],rx(r)+2,ry(r)+2,14,14)}}
+  const ic=r.kind=='boss'?'_boss':r.kind=='fairy'?'fchest':r.kind=='treasure'?'chest':null;if(ic&&(r.seen||r.known||all))cx.drawImage(ic=='_boss'?(F.kind=='B'||F.kind=='D'?BICON[bossKey()]:SP.orc):SP[ic],rx(r)+cw/2-8,ry(r)+chh/2-8,16,16);if(cur)cx.drawImage(SP[P.ch.s],rx(r)+2,ry(r)+2,14,14)}}
 
 function dropLoot(e){L.coins=L.coins||[];L.hearts=L.hearts||[];const tier=Math.max(1,Math.ceil(e.xp/4)),fl=(act-1)*3+(run.floors||0);
  let v=Math.round((tier+fl*.5)*(e.elite?3:1)*(e.boss?8:1)),n=Math.min(e.boss?20:e.elite?8:4,Math.max(1,Math.ceil(v/2)));const per=Math.max(1,Math.floor(v/n));let rem=v;
@@ -1397,12 +1397,12 @@ drawMap=function(){const key=act+':'+(pos?pos.r+','+pos.c:'s')+':'+(MAP.nodes.le
  for(const a of all)for(const b of a.next){const[x1,y1]=nxy(a),[x2,y2]=nxy(b),Ln=Math.hypot(x2-x1,y2-y1),st=Math.max(3,Math.floor(Ln/(10*Math.max(.7,z))));const hot=a==pos&&av.includes(b);cx.fillStyle=a.done&&b.done?'#c9a45a':hot?'#f2c447':'#4a4058';for(let i=2;i<st-1;i++)cx.fillRect(Math.round(x1+(x2-x1)*i/st-k/2),Math.round(y1+(y2-y1)*i/st-k/2),k+1,k+1)}
  nodeXY=[];for(const n of all.concat([MAP.boss])){const[x,y]=nxy(n),ss=s*(n.t=='B'?2:1);if(x<-ss*2||x>VW+ss*2||y<-ss*2||y>VH+ss*2){nodeXY.push([n,x,y,ss]);continue}const isA=av.includes(n),isS=isA&&av[sel]==n;
   if(isA){const pu=Math.round(Math.sin(tick/8)*2*z+(isS?6:3)*z);cx.fillStyle=isS?'#f2c447':'#8a6a3a';cx.fillRect(x-ss/2-pu,y-ss/2-pu,ss+pu*2,ss+pu*2);cx.fillStyle='#17131d';cx.fillRect(x-ss/2-pu+k,y-ss/2-pu+k,ss+pu*2-2*k,ss+pu*2-2*k)}
-  cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(SP[NODE[n.t].s],Math.round(x-ss/2),Math.round(y-ss/2),ss,ss);cx.globalAlpha=1;
+  cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(nodeIcon(n.t),Math.round(x-ss/2),Math.round(y-ss/2),ss,ss);cx.globalAlpha=1;
   if(n.done&&n!=pos){cx.fillStyle='#c9a45a';cx.fillRect(x-ss/2,y+ss/2+2,ss,k)}if(n==pos&&P)cx.drawImage(SP[P.ch.s],Math.round(x+ss/2),Math.round(y-ss/2),Math.round(s*.8),Math.round(s*.8));nodeXY.push([n,x,y,ss])}
  const sn=av[sel],T=TC.on;cx.textAlign='center';cx.font=`bold ${T?13:Math.max(16,Math.min(28,VW/42))}px "Courier New",monospace`;cx.fillStyle='#120c18';const tt=`ACT ${act}: ${ACTN[act-1].toUpperCase()}`;
  if(T){cx.fillStyle='rgba(10,6,16,.75)';const line=tt+(sn?`  \u00b7  > ${NODE[sn.t].n.toUpperCase()} <  \u00b7  TAP AGAIN / GO`:'');const w=cx.measureText(line).width+20,mx0=290,mx1=VW-130,mc=(mx0+mx1)/2,yb=w>mx1-mx0?VH-90:VH-34;cx.fillRect((w>mx1-mx0?VW/2:mc)-w/2,yb,w,24);cx.fillStyle='#f2c447';cx.fillText(line,w>mx1-mx0?VW/2:mc,yb+17)}
  else{cx.fillStyle='#f2c447';cx.fillText(tt,VW/2,78);if(sn){cx.font='bold 16px "Courier New",monospace';cx.fillStyle='#e8e0d0';cx.fillText(`> ${NODE[sn.t].n.toUpperCase()} <  (click again or Enter)`,VW/2,VH-40)}}
- cx.textAlign='left';if(MC.legend){cx.font='bold 13px "Courier New",monospace';const lx=VW-178,ly0=T?60:60;cx.fillStyle='rgba(10,6,16,.8)';cx.fillRect(lx-8,ly0-6,176,7*30+8);let ly=ly0;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(SP[NODE[t].s],lx,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),lx+30,ly+17);ly+=30}}
+ cx.textAlign='left';if(MC.legend){cx.font='bold 13px "Courier New",monospace';const lx=VW-178,ly0=T?60:60;cx.fillStyle='rgba(10,6,16,.8)';cx.fillRect(lx-8,ly0-6,176,7*30+8);let ly=ly0;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(nodeIcon(t),lx,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),lx+30,ly+17);ly+=30}}
  mapUIVis()};
 // --- DOM controls ---
 function mapUI(){let u=$('mapui');if(u)return u;u=document.createElement('div');u.id='mapui';u.style.cssText='position:fixed;left:calc(10px + env(safe-area-inset-left));bottom:calc(10px + env(safe-area-inset-bottom));z-index:16;display:none;gap:8px';
@@ -1632,8 +1632,8 @@ function lich3(f){const{g,P,E,SE,Ln,Q,R,glow,fin}=BK(),br=[0,-1,-2,-1][f],sw=[0,
  for(let i=0;i<3;i++){const a=f*.8+i*2.1,x=64+Math.cos(a)*44,y=72+Math.sin(a)*10+br;glow(x,y,7,'rgba(176,90,224,.8)');E(x,y,2.5,2.5,'#e0a0ff')}
  return fin(50)}
 // Dragon King: S-necked crowned wyrm, bony wings, furnace belly
-function dragon3(f,open){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(160);g.translate(14,30);const wy=[0,-6,-10,-4][f],Rd=['#6a1018','#a82430','#e0403a','#ff7a60'];
- // far wing
+function dragon3(f,open,ho){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(160);g.translate(14,30);const wy=[0,-6,-10,-4][f],Rd=['#6a1018','#a82430','#e0403a','#ff7a60'];
+ if(!ho){// far wing
  P([[56,52],[40,6+wy],[20,10+wy],[8,26+wy],[18,30+wy],[10,44+wy],[30,50],[40,62]],'#3a0810');
  // tail
  for(let i=0;i<22;i++){const t=i/21;SE(36-t*32+Math.sin(i/3+f)*2,104-t*16+Math.sin(i/2+f)*2,11-t*8,9-t*6,Rd.slice(0,3))}P([[6,84],[0,76],[10,80]],'#3a2e30');
@@ -1642,7 +1642,7 @@ function dragon3(f,open){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(160);g.translat
  for(let i=0;i<8;i++)P([[40+i*7,72-(i%2)*2],[44+i*7,64-(i%2)*2],[47+i*7,72]],'#3a0a10');
  // legs
  for(const x of[44,72]){SE(x,112,8,10,Rd.slice(0,3));for(let k=0;k<3;k++)P([[x-6+k*5,120],[x-4+k*5,126],[x-2+k*5,120]],'#f0e0c0')}
- // neck S-curve
+ }// neck S-curve
  for(let i=0;i<16;i++){const t=i/15,x=78+Math.sin(t*3)*10+t*16,y=76-t*50;SE(x,y,10-t*3,9-t*3,Rd)}for(let i=0;i<8;i++)P([[80+i*2.6,70-i*6],[74+i*2.6,66-i*6],[80+i*2.6,64-i*6]],'#3a0a10');
  // head
  SE(104,22,16,11,Rd);P([[104,24],[126,28+(open?4:0)],[124,34+(open?8:0)],[100,32]],Rd[1]);if(open){P([[104,30],[126,32],[124,36],[104,36]],'#1a0408');glow(122,34,14,'rgba(255,140,40,.9)')}
@@ -1650,9 +1650,9 @@ function dragon3(f,open){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(160);g.translat
  E(106,18,4,2.5,'#1a0408');E(107,18,2.5,1.6,'#ffd24a');R(107,17,1,1,'#ffffff');Ln(98,14,112,16,2,'#3a0a10');
  horn(96,14,-1,14,5,.06,['#3a2e30','#8a7a68','#e8dcc0']);horn(100,12,-1,10,4,.1,['#3a2e30','#8a7a68','#e8dcc0']);for(let i=0;i<4;i++)P([[92+i*3,12],[94+i*3,2+(i%2)*3],[96+i*3,12]],'#ffd24a');
  for(let i=0;i<4;i++)P([[90,22+i*4],[80-i*2,18+i*5],[90,26+i*4]],'#6a1420');
- // near wing with bones
+ if(!ho){// near wing with bones
  P([[66,56],[74,0+wy],[96,-2+wy],[104,10+wy],[116,14+wy],[100,34],[86,52]],'#6a1420');for(const[a,b]of[[74,0],[96,-2],[116,14]]){Ln(66,56,a,b+wy,2.5,'#c87058');}for(const[a,b]of[[84,30],[100,26]])E(a,b+wy*.5,2,2,'#2a0a10');
- return fin(85)}
+ }return fin(85)}
 // Demon Lord – 3 distinct phases
 function demon3(v,f){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(),br=[0,1,2,1][f],sw=[0,2,0,-2][f];
  const sk=v==3?['#4a0608','#8a1418','#d0282a','#ff6a4a']:['#3a0810','#6a1020','#a8202e','#e85050'],gd='#e8b440',rb='#241028',eye=v==1?'#ffd24a':v==2?'#ff8a1a':'#ffffff';
@@ -1822,6 +1822,16 @@ function heirSet(h){if(!h||!h.name)return SPF.bk;const i=hhash(h.name)%HPAL.leng
   hurt:[flash(mk({sword:40,bob:-1,cs:3,plume:2,cw:2,glow:0}),'#ffffff',.55),flash(mk({sword:40,bob:-1,cs:3,plume:2,cw:2.5}),'#ff3030',.45)],death:B.death};
  Object.assign(KP,sv);delete KP._pl;return HSET[i]=set}
 
+// ---------- boss portrait icons (map / legend / minimap) ----------
+const BICON={};{const crops={gking:[34,4,60],lich:[40,6,48],dragon:[92,24,52],demon:[36,0,56]};
+ for(const k in crops){const src=k=='dragon'?dragon3(0,0,1):SPF[k][0],[cx0,cy0,sz]=crops[k],c=cvs(32),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  const ring=k=='lich'?['#0a2a24','#4affc0']:k=='demon'?['#2a0610','#ffd24a']:k=='dragon'?['#2a0a06','#ff8a2a']:['#2a0608','#e0403a'];
+  g.fillStyle='#120c18';g.beginPath();g.arc(16,16,15.5,0,7);g.fill();g.fillStyle=ring[0];g.beginPath();g.arc(16,16,14,0,7);g.fill();
+  g.save();g.beginPath();g.arc(16,16,13,0,7);g.clip();g.drawImage(src,cx0,cy0,sz,sz,2,3,28,28);g.restore();
+  g.strokeStyle=ring[1];g.lineWidth=2;g.beginPath();g.arc(16,16,14,0,7);g.stroke();g.fillStyle='#ffe27a';for(const[a,b]of[[16,1],[2,16],[30,16],[16,31]])g.fillRect(a-1,b-1,2,2);c.hd=1;BICON[k]=c}}
+function bossKey(){return F&&F.kind=='D'||act>3?'demon':(ET[BOSSES[Math.max(0,Math.min(2,(act||1)-1))]]||{}).s||'dragon'}
+function nodeIcon(t){return t=='B'?BICON[bossKey()]||SP.dragon:SP[NODE[t].s]}
+
 // ---------- ART PASS 3: HD pixel upscale (Scale2x) + selective outline + rim light + breathing frames ----------
 function hdify(src){if(!src||src.hd)return src;const W=src.width,H=src.height,g0=src.getContext('2d'),sd=g0.getImageData(0,0,W,H).data,S=new Uint32Array(sd.buffer.slice(0));
  const W2=W*2,H2=H*2,O=new Uint32Array(W2*H2),at=(x,y)=>S[Math.max(0,Math.min(H-1,y))*W+Math.max(0,Math.min(W-1,x))];
@@ -1864,7 +1874,61 @@ function drawGhosts(){if(!L||!L.ghosts||!L.ghosts.length)return;const X=x=>Math.
 function npcSprite(c1,c2,skin,hat,f){const c=cvs(16),{r,p,b}=PX(c.getContext('2d')),br=f%2;b(5,7+br,6,7-br,c1);r(5,12,6,1,c2);r(5,14,2,2,'#2a1810');r(9,14,2,2,'#2a1810');b(5,2+br,6,5,skin);p(6,4+br,'#120c18');p(9,4+br,'#120c18');if(hat)r(4,1+br,8,2,hat);r(3,8+br,2,4,c1);r(11,8+br,2,4,c1);return hdify(outline(c))}
 const NPCS={smith:[86,'#6a4a3a','#3a2a20','#e0a878','#2a2a30'],bank:[184,'#2a3a6a','#ffd24a','#e8c8a0','#1a1a2a'],shrine:[300,'#e8e0f0','#b05ae0','#e8c8a0',0],lib:[362,'#3a2a50','#c9a24a','#d8b890','#3a2a50'],gate:[492,'#1a1020','#3a1a30','#5a4a5a','#120810'],herb:[-112,'#3a6a2a','#c8e06a','#d8b890','#2a4a1a'],chapel:[-190,'#f0e8d8','#ffd24a','#e8c8a0',0],tavern:[-252,'#6a3a1a','#c9a24a','#e0a878','#3a2010'],squire:[-336,'#6a6a7a','#8a2a24','#d0a080','#4a4a5a']};
 const NPCF={};for(const k in NPCS)NPCF[k]=[0,1].map(f=>npcSprite(NPCS[k][1],NPCS[k][2],NPCS[k][3],NPCS[k][4],f));
-function hubNPCs(X,Y,Zh,t){const on=new Set(['smith','bank','shrine','lib','gate',...townOn().map(b=>b.id)]);for(const k in NPCS){if(!on.has(k))continue;const x=NPCS[k][0],img=NPCF[k][(t/40+x|0)&1],s=13;const fl=HB2.x<x;cx.save();cx.translate(X(x)+(fl?s*Zh:0),Y(HGY-s));if(fl)cx.scale(-1,1);cx.drawImage(img,0,0,s*Zh,s*Zh);cx.restore();
+// ---------- human townsfolk (48px, 3/4 view facing right) ----------
+function human(o,f){const c=cvs(48),g=c.getContext('2d'),{r,p}=PX(g),b=f&1,sk=o.skin,skd=shd(sk,.78),skh=shd(sk,1.12),T=o.top,Td=shd(T,.7),Th=shd(T,1.25),Lg=o.legs||'#3a2a20',hy=4+b,ty=13+b;
+ const robe=o.robe;
+ // back arm
+ r(17,ty+1,3,10,o.bare?skd:Td);r(17,ty+11,3,2,skd);
+ // legs + boots
+ if(!robe){r(21,27,3,15,Lg);r(25,27,3,15,shd(Lg,1.15));r(20,41,5,3,o.boot||'#2a1a10');r(25,41,6,3,o.boot||'#2a1a10');r(21,27,7,1,shd(Lg,.7))}
+ // torso / robe
+ if(robe){for(let y=ty;y<44;y++){const w=8+Math.floor((y-ty)*.22);r(24-w/2-1,y,w+2,1,y>40?Td:T);p(24-w/2-1,y,Td);p(24+w/2,y,Th)}r(19,43,12,1,Td);r(22,44,3,1,'#2a1a10');r(26,44,3,1,'#2a1a10')}
+ else{r(19,ty,10,15,T);r(19,ty,2,15,Th);r(27,ty,2,15,Td);r(19,ty+13,10,2,o.belt||'#3a2418');p(24,ty+13,'#c9a24a')}
+ if(o.trim){r(23,ty,2,robe?31-b:15,o.trim);r(19,ty,10,1,o.trim)}
+ if(o.apron){r(21,ty+4,7,robe?24:17,o.apron);r(21,ty+4,7,1,shd(o.apron,1.3));r(22,ty+1,1,3,shd(o.apron,.7));r(26,ty+1,1,3,shd(o.apron,.7))}
+ if(o.fur){r(18,ty,12,3,o.fur);r(18,ty+2,12,1,shd(o.fur,.75));for(let y=ty+3;y<ty+15;y+=2)p(19,y,o.fur)}
+ if(o.armor){r(19,ty,10,10,'#8a8e9a');r(19,ty,10,1,'#c8ccd8');r(19,ty,2,10,'#a8acb8');r(27,ty,2,10,'#5a5e6a');r(18,ty,4,3,'#a8acb8');r(27,ty,4,3,'#6a6e7a');r(22,ty+3,4,5,o.tabard||'#8a2a24');p(23,ty+4,'#ffd24a')}
+ // neck + head
+ r(22,ty-2,4,2,skd);
+ r(20,hy,8,8,sk);r(20,hy+7,8,1,skd);r(27,hy+1,1,6,skh);p(28,hy+4,sk);p(28,hy+5,skd);/*nose*/
+ p(21,hy+4,skd);p(21,hy+3,skh);/*ear*/
+ // eyes (white + pupil), brows, mouth
+ const blink=(f==3);if(blink){r(24,hy+4,3,1,skd)}else{p(24,hy+4,'#f4f0e8');p(25,hy+4,'#1a1008');p(26,hy+4,'#f4f0e8');p(27,hy+4,'#1a1008')}
+ r(24,hy+3,2,1,o.hair?shd(o.hair,.8):skd);r(26,hy+3,2,1,o.hair?shd(o.hair,.8):skd);r(25,hy+6,2,1,'#8a3a30');
+ if(o.spec){r(23,hy+4,5,1,'#c9a24a');p(24,hy+4,'#d8ecf4');p(26,hy+4,'#d8ecf4');p(25,hy+4,'#1a1008');p(27,hy+4,'#1a1008')}
+ // hair styles
+ const H=o.hair;if(H){if(o.hs!='bald'){r(20,hy-1,8,2,H);r(20,hy,3,4,H);p(21,hy+1,shd(H,1.3));if(o.hs=='long'){r(19,hy,3,10,H);r(20,hy+8,2,4,H)}if(o.hs=='bun'){r(18,hy-1,3,3,H)}}else{r(20,hy,2,2,H);r(21,hy+2,1,2,H)}}
+ if(o.beard){r(22,hy+6,6,3,o.beard);r(24,hy+5,4,1,o.beard);p(25,hy+6,'#8a3a30');r(23,hy+9,4,1,o.beard)}
+ if(o.tonsure){r(20,hy-1,8,1,skh);r(20,hy,2,3,o.tonsure);r(26,hy,2,1,o.tonsure)}
+ // headwear
+ if(o.hat=='tall'){r(19,hy-1,10,2,'#1a1424');r(21,hy-6,6,5,'#2a2034');r(21,hy-3,6,1,'#c9a24a')}
+ if(o.hat=='cap'){r(19,hy-2,10,3,o.capc||'#6a3a1a');r(26,hy,4,1,o.capc||'#6a3a1a')}
+ if(o.hood){r(18,hy-2,11,3,o.hood);r(18,hy,3,11,o.hood);r(19,ty-2,10,3,o.hood);r(28,hy-1,1,4,o.hood);p(19,hy-2,shd(o.hood,1.3))}
+ if(o.veil){r(19,hy-2,10,2,o.veil);r(19,hy,2,10,o.veil);r(19,hy-2,10,1,'#ffd24a')}
+ // front arm + hand + prop
+ const ax=28,ay=ty+1,sw=o.swing?[0,-3,-5,-2][f]:0;r(ax,ay,3,9,o.bare?sk:T);r(ax,ay,1,9,o.bare?skh:Th);if(o.bare)r(ax,ay,3,2,T);r(ax,ay+9,3,3,sk);p(ax+2,ay+10,skd);
+ const hx=ax+1,hy2=ay+10;
+ if(o.prop=='hammer'){r(hx,hy2-8+sw,1,9,'#5a3a1a');r(hx-2,hy2-10+sw,6,3,'#6a6a7a');r(hx-2,hy2-10+sw,6,1,'#a8acb8')}
+ if(o.prop=='purse'){r(hx-1,hy2+1,4,4,'#8a5a1a');p(hx,hy2+1,'#ffd24a');p(hx+1,hy2+2,'#ffd24a')}
+ if(o.prop=='book'){r(hx-1,hy2-2,5,6,'#6a1a24');r(hx,hy2-2,4,1,'#e8dcc0');r(hx+3,hy2-2,1,6,'#e8dcc0')}
+ if(o.prop=='symbol'){r(hx,hy2-4,1,5,'#ffd24a');r(hx-1,hy2-3,3,1,'#ffd24a')}
+ if(o.prop=='lantern'){r(hx,hy2+1,1,2,'#2a2028');r(hx-1,hy2+3,3,4,'#3a3040');r(hx-.5,hy2+4,2,2,f%2?'#ffd24a':'#ff9a3a')}
+ if(o.prop=='basket'){r(hx-2,hy2+1,6,4,'#8a6a3a');r(hx-2,hy2+1,6,1,'#a88a5a');p(hx-1,hy2,'#6ccf3a');p(hx+1,hy2-1,'#3a8a2a');p(hx+2,hy2,'#c8e06a')}
+ if(o.prop=='mug'){r(hx,hy2-2,3,4,'#8a6a3a');r(hx,hy2-2,3,1,'#f4ecd8');p(hx+3,hy2-1,'#8a6a3a')}
+ if(o.prop=='spear'){r(hx,hy2-22,1,30,'#6a4a2a');r(hx-1,hy2-25,3,3,'#c8ccd8');p(hx,hy2-26,'#ffffff')}
+ const out=outline(c);out.hd=1;return out}
+const NPCH={smith:{skin:'#d8a07a',hair:'#3a2418',hs:'short',beard:'#3a2418',top:'#8a6a50',bare:1,apron:'#5a3a22',legs:'#3a2a20',prop:'hammer',swing:1},
+ bank:{skin:'#e8c4a0',hair:'#8a8a90',hs:'short',top:'#2a3a6a',fur:'#e8e0d0',trim:'#c9a24a',legs:'#1a1a2a',hat:'tall',prop:'purse',boot:'#120c18'},
+ shrine:{skin:'#f0d0b0',hair:'#e8c86a',hs:'long',top:'#f4f0f8',robe:1,trim:'#ffd24a',veil:'#ffffff',prop:'symbol'},
+ lib:{skin:'#dcb490',hair:'#d8d8dc',hs:'bald',beard:'#d8d8dc',top:'#3a2a50',robe:1,trim:'#c9a24a',spec:1,prop:'book'},
+ gate:{skin:'#c89070',hair:'#2a1a14',hs:'short',beard:'#2a1a14',top:'#2a2030',robe:1,hood:'#1a1424',prop:'lantern'},
+ herb:{skin:'#e0b490',hair:'#7a4a20',hs:'bun',top:'#c8b890',robe:1,apron:'#3a6a2a',prop:'basket'},
+ chapel:{skin:'#d8a882',tonsure:'#5a3a20',top:'#6a4a2a',robe:1,belt:'#e8dcc0',trim:null,prop:'symbol'},
+ tavern:{skin:'#e0a888',hair:'#8a3a1a',hs:'short',beard:'#8a3a1a',top:'#6a2a1a',apron:'#e8dcc0',legs:'#3a2a1a',prop:'mug'},
+ squire:{skin:'#e8c0a0',hair:'#c89a5a',hs:'short',top:'#6a5a4a',armor:1,tabard:'#8a2a24',legs:'#4a3a2a',prop:'spear'}};
+for(const k in NPCH)NPCF[k]=[0,1,2,3].map(f=>human(NPCH[k],f));
+
+function hubNPCs(X,Y,Zh,t){const on=new Set(['smith','bank','shrine','lib','gate',...townOn().map(b=>b.id)]);for(const k in NPCS){if(!on.has(k))continue;const x=NPCS[k][0],fi=(t/36+Math.abs(x)|0),img=NPCF[k][(fi%8==7)?3:(t%90<45&&NPCH[k].swing?[0,1,2,1][(t/8|0)%4]:fi&1)],s=14;const fl=HB2.x<x;cx.save();cx.translate(X(x)+(fl?s*Zh:0),Y(HGY-s));if(fl)cx.scale(-1,1);cx.drawImage(img,0,0,s*Zh,s*Zh);cx.restore();
   if(k=='smith'&&(t%50)<6){cx.fillStyle='#ffd24a';cx.fillRect(X(x+12),Y(HGY-9),Zh,Zh);cx.fillRect(X(x+14),Y(HGY-11),Zh,Zh)}}}
 
 applyTouch();MC.legend=!TC.on;
