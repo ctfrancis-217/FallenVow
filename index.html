@@ -2040,4 +2040,97 @@ function hubNPCs(X,Y,Zh,t){const on=new Set(['smith','bank','shrine','lib','gate
 applyTouch();MC.legend=!TC.on;
 cv.addEventListener('mousedown',e=>{if(mode=='cutscene'){e.stopImmediatePropagation();cutNext()}},true);
 MAP=genMap();act=1;title();requestAnimationFrame(loop);
+// ---------- GFX: WebGL lighting post-pass (High/Low/Off) ----------
+// Lean custom WebGL1 pass. The game still draws everything to the 2D canvas #c exactly as before;
+// this layer uploads that frame as a texture and relights it on a GL canvas stacked on top (pointer-events:none).
+// No game state is written. Off = classic canvas (GL canvas hidden).
+const GFX=(function(){
+ const isTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+ const G={on:false,q:'off',fail:'',fps:60,lights:0,low:0};
+ const gc=document.createElement('canvas');gc.id='glc';gc.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;display:none;image-rendering:pixelated;z-index:0';
+ cv.insertAdjacentElement('afterend',gc);
+ let gl=null;try{gl=gc.getContext('webgl',{alpha:false,antialias:false,premultipliedAlpha:false,preserveDrawingBuffer:true})}catch(e){}
+ if(!gl)G.fail='WebGL unavailable';
+ const NL=16;
+ const VS='attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0,1);}';
+ const FS_MAIN=`precision mediump float;varying vec2 v;uniform sampler2D T,B;uniform vec2 R;uniform float Zp,tm,hq,bl,sh,fg;uniform vec3 amb,fc;
+ uniform vec4 Lp[${NL}];uniform vec3 Lc[${NL}];uniform int N;
+ float lu(vec2 u){vec3 c=texture2D(T,u).rgb;return dot(c,vec3(.3,.59,.11));}
+ void main(){vec2 px=vec2(v.x,1.-v.y)*R;vec2 cp=(floor(px/Zp)+.5)*Zp;vec2 uv=cp/R;vec2 u0=px/R;
+  vec3 base=texture2D(T,u0).rgb;vec3 n=vec3(0,0,1);
+  if(hq>.5){vec2 d=vec2(Zp)/R;float l=lu(uv-vec2(d.x,0.)),r=lu(uv+vec2(d.x,0.)),t=lu(uv-vec2(0.,d.y)),b=lu(uv+vec2(0.,d.y));n=normalize(vec3((l-r)*2.2,(t-b)*2.2,1.));}
+  vec3 li=amb;
+  for(int i=0;i<${NL};i++){if(i>=N)break;vec4 L=Lp[i];vec2 dl=L.xy-cp;float dist=length(dl)/L.z;if(dist<1.){float a=1.-dist;a=a*a;
+   vec3 ld=normalize(vec3(dl/L.z,.35));float nd=hq>.5?(.3+.7*max(dot(n,ld),0.)):1.;li+=Lc[i]*L.w*a*nd;}}
+  float bl0=max(base.r,max(base.g,base.b));li=max(li,vec3(smoothstep(.5,.85,bl0)));li=floor(li*7.+.5)/7.; // emissive keep + banded light for pixel-art look
+  vec3 col=base*li;
+  // light shafts + fog (procedural, screen space)
+  float sy=v.y;float s=sin((cp.x/R.x*6.+ (1.-sy)*1.6)*3.14159+tm*.15);float shaft=smoothstep(.82,1.,s)*smoothstep(.0,.9,sy)*sh;
+  float f=fg*smoothstep(.45,0.,sy)*(.6+.4*sin(cp.x/R.x*9.+tm*.4+sy*7.));
+  col+=fc*(shaft*.10+f*.12);
+  if(bl>.5)col+=texture2D(B,v).rgb*1.15;
+  gl_FragColor=vec4(col,1);}`;
+ const FS_BR='precision mediump float;varying vec2 v;uniform sampler2D T;void main(){vec3 c=texture2D(T,vec2(v.x,1.-v.y)).rgb;float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(.72,.95,l),1);}';
+ const FS_BL='precision mediump float;varying vec2 v;uniform sampler2D T;uniform vec2 D;void main(){vec3 c=texture2D(T,v).rgb*.227;c+=(texture2D(T,v+D*1.38).rgb+texture2D(T,v-D*1.38).rgb)*.316;c+=(texture2D(T,v+D*3.23).rgb+texture2D(T,v-D*3.23).rgb)*.07;gl_FragColor=vec4(c,1);}';
+ function prog(fs){const p=gl.createProgram();for(const[t,s]of[[gl.VERTEX_SHADER,VS],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(sh);gl.attachShader(p,sh)}gl.bindAttribLocation(p,0,'p');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw gl.getProgramInfoLog(p);const u={};const n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const a=gl.getActiveUniform(p,i);u[a.name.replace('[0]','')]=gl.getUniformLocation(p,a.name)}return{p,u}}
+ function tex(){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);return t}
+ let PM,PB,PL,TF,FB=[],BW=0,BH=0;
+ function fbo(w,h){const t=tex();gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,f}}
+ if(gl){try{PM=prog(FS_MAIN);PB=prog(FS_BR);PL=prog(FS_BL);const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);TF=tex();gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}catch(e){G.fail='shader: '+e;gl=null}}
+ const hex=c=>{if(!c||c[0]!='#')return[1,.8,.5];const n=c.length<6?c.slice(1).split('').map(x=>x+x).join(''):c.slice(1,7);return[0,2,4].map(i=>parseInt(n.substr(i,2),16)/255)};
+ const rgbS=s=>s?s.split(',').map(x=>+x/255):[1,.7,.4];
+ // per-act ambient (darkness) + fog colour; hub warm night
+ const AMB={1:[.34,.36,.48],2:[.28,.36,.38],3:[.42,.28,.26],4:[.34,.26,.40],hub:[.55,.48,.55]};
+ let LS=[];const add=(x,y,r,i,c)=>{if(x<-r||y<-r||x>VW+r||y>VH+r)return;LS.push([x,y,r,i,c])};
+ G.torch=[];
+ // auto light discovery (lava, candles, fire, windows, lanterns): scan a tiny copy of the frame for bright warm cells
+ const sc=document.createElement('canvas');sc.width=64;sc.height=36;const sg=sc.getContext('2d',{willReadFrequently:true});let auto=[],autoT=0;
+ function scan(warm){sg.drawImage(cv,0,0,64,36);const d=sg.getImageData(0,0,64,36).data,c=[];for(let y=0;y<36;y++)for(let x=0;x<64;x++){const i=(y*64+x)*4,r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx>.62&&mx-mn>.25&&(!warm||r>=b))c.push([mx+(mx-mn),x,y,[r,g,b]])}
+  c.sort((a,b)=>b[0]-a[0]);const out=[];for(const q of c){if(out.length>=6)break;if(out.some(o=>Math.abs(o[1]-q[1])<6&&Math.abs(o[2]-q[2])<5))continue;out.push(q)}
+  auto=out.map(q=>[(q[1]+.5)*VW/64,(q[2]+.5)*VH/36,q[3]])}
+ function gatherCombat(){const Z0=Z,cx0=L.camX,cy0=L.camY,S=(x,y)=>[(x-cx0)*Z0,(y-cy0)*Z0];const th=typeof THM=='function'?THM():{};const tc=rgbS(th.glow);
+  for(const t of G.torch)add(t[0],t[1],70*Z0*t[2],1.35*t[2],tc);
+  if(P&&!P.dead){const[x,y]=S(P.x+3,P.y+3);add(x,y,46*Z0,.55,[.75,.8,1]); // visor/self light
+   if(P.atkT>0){const[sx,sy]=S(P.x+3+P.face*10,P.y+4);add(sx,sy,34*Z0,1.25,[.85,.9,1])}}
+  for(const s of L.pshots||[]){const[x,y]=S(s.x+(s.w||5)/2,s.y+(s.h||5)/2);add(x,y,56*Z0,1.6,hex(s.c||'#b05ae0'))}
+  for(const s of L.shots||[]){const[x,y]=S(s.x+(s.w||5)/2,s.y+(s.h||5)/2);add(x,y,40*Z0,1.2,s.s=='fireball'?[1,.55,.2]:[.75,.4,1])}
+  for(const b of L.bolts||[]){const[x,y]=S((b.x1+b.x2)/2,(b.y1+b.y2)/2);add(x,y,60*Z0,1.2,[.7,.8,1])}
+  for(const e of L.mobs||[]){if(e.dead)continue;if(e.boss){const[x,y]=S(e.x+e.w/2,e.y+e.h/2);add(x,y,(60+e.w)*Z0,.9+.15*Math.sin(tick/9),tc)}else if(e.dread){const[x,y]=S(e.x+e.w/2,e.y+e.h/2);add(x,y,44*Z0,.9+.3*Math.sin(tick/5),[1,.25,.4])}else if(e.elite){const[x,y]=S(e.x+e.w/2,e.y+e.h/2);add(x,y,30*Z0,.5,[1,.5,.4])}}
+  for(const a of auto)add(a[0],a[1],40*Z0,.75,a[2])}
+ function gatherHub(){const Zh=Math.max(2,Math.round(VH/190));add(VW/2,VH*.72,60*Zh,.5,[1,.75,.45]);for(const a of auto)add(a[0],a[1],48*Zh,1.0,a[2].map((c,i)=>Math.min(1,c*[1.1,.9,.6][i])))}
+ let lastR=0,fr=0,fpsT=0,lowT=0;
+ function render(kind){if(!G.on||!gl)return;const W=cv.width,H=cv.height;if(gc.width!=W||gc.height!=H){gc.width=W;gc.height=H}
+  const hq=G.q=='high';if(gc.style.display!='block')gc.style.display='block';if(gc.style.filter!=cv.style.filter)gc.style.filter=cv.style.filter;lastR=performance.now();
+  if(++autoT%(hq?6:12)==0)try{scan(kind=='hub')}catch(e){}
+  LS=[];if(kind=='hub')gatherHub();else gatherCombat();
+  // keep strongest lights, nearest to screen centre first
+  LS.sort((a,b)=>b[3]*b[2]-a[3]*a[2]);const n=Math.min(LS.length,hq?NL:8);G.lights=n;
+  gl.bindTexture(gl.TEXTURE_2D,TF);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,cv);
+  const bl=hq;if(bl){const bw=Math.max(1,W>>2),bh=Math.max(1,H>>2);if(bw!=BW||bh!=BH){FB=[fbo(bw,bh),fbo(bw,bh)];BW=bw;BH=bh}
+   gl.viewport(0,0,bw,bh);gl.useProgram(PB.p);gl.bindFramebuffer(gl.FRAMEBUFFER,FB[0].f);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,TF);gl.uniform1i(PB.u.T,0);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+   gl.useProgram(PL.p);gl.uniform1i(PL.u.T,0);for(let k=0;k<2;k++){gl.bindFramebuffer(gl.FRAMEBUFFER,FB[1].f);gl.bindTexture(gl.TEXTURE_2D,FB[0].t);gl.uniform2f(PL.u.D,1/bw,0);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.bindFramebuffer(gl.FRAMEBUFFER,FB[0].f);gl.bindTexture(gl.TEXTURE_2D,FB[1].t);gl.uniform2f(PL.u.D,0,1/bh);gl.drawArrays(gl.TRIANGLE_STRIP,0,4)}}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,W,H);gl.useProgram(PM.p);const u=PM.u;
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,TF);gl.uniform1i(u.T,0);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,bl?FB[0].t:TF);gl.uniform1i(u.B,1);gl.activeTexture(gl.TEXTURE0);
+  const Zp=kind=='hub'?Math.max(2,Math.round(VH/190)):Z;
+  gl.uniform2f(u.R,W,H);gl.uniform1f(u.Zp,Zp);gl.uniform1f(u.tm,tick/60);gl.uniform1f(u.hq,hq?1:0);gl.uniform1f(u.bl,bl?1:0);
+  const th=typeof THM=='function'&&kind!='hub'?THM():null;const fcol=kind=='hub'?[1,.55,.45]:rgbS(th&&th.glow);const am=kind=='hub'?AMB.hub:fcol.map(c=>.27+c*.13);
+  gl.uniform3fv(u.amb,am);gl.uniform3fv(u.fc,fcol);gl.uniform1f(u.sh,hq&&kind!='hub'?1:0);gl.uniform1f(u.fg,kind=='hub'?.5:1);
+  const lp=new Float32Array(NL*4),lc=new Float32Array(NL*3);for(let i=0;i<n;i++){const l=LS[i];lp.set([l[0],l[1],l[2],l[3]],i*4);lc.set(l[4],i*3)}
+  gl.uniform4fv(u.Lp,lp);gl.uniform3fv(u.Lc,lc);gl.uniform1i(u.N,n);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);G.torch=[]}
+ // fps watchdog: High->Low->Off when auto-picked and the frame rate stays low for ~5s
+ let lt=performance.now();
+ function watch(ts){const dt=ts-lt;lt=ts;fr++;fpsT+=dt;if(fpsT>1000){G.fps=Math.round(fr*1000/fpsT);fr=0;fpsT=0;
+   if(G.on&&G.auto&&!G.noWatch&&gc.style.display=='block'){if(G.fps<(G.q=='high'?40:28))lowT++;else lowT=0;if(lowT>=5){lowT=0;if(G.q=='high'){G.q='low';G.low++;try{log('Graphics: frame rate low, switched to Low quality.','#f2a05a')}catch(e){}}else{set('off',1);try{log('Graphics: frame rate low, switched to Classic.','#f2a05a')}catch(e){}}}}}
+  if(performance.now()-lastR>120&&gc.style.display!='none')gc.style.display='none';requestAnimationFrame(watch)}
+ requestAnimationFrame(watch);
+ function set(q,auto){if(!gl&&q!='off'){q='off'}G.q=q;G.on=q!='off';if(!G.on)gc.style.display='none';if(!auto){G.auto=false;meta.gfx=q;try{saveMeta()}catch(e){}}}
+ G.init=function(){let q=meta.gfx;G.auto=!q;if(!q||!['high','low','off'].includes(q))q=isTouch?'low':'high';set(q,1);if(!gl)G.q='off'};
+ G.set=set;G.render=render;G.gl=!!gl;G.isTouch=isTouch;return G})();
+// hooks (wrap, do not change originals)
+{const _tp=torchPx;torchPx=function(X,Y,tx,ty,glow){const x=tx*8+2,y=ty*8-2,fl=1+Math.sin(tick/4+tx*1.7)*.08+Math.sin(tick/9+tx)*.06;GFX.torch.push([X(x+4),Y(y+3),fl]);return _tp.apply(this,arguments)};
+ const _dl=drawLevel;drawLevel=function(){const r=_dl.apply(this,arguments);try{GFX.render('combat')}catch(e){console.warn(e)}return r};
+ const _dh=drawHub;drawHub=function(){const r=_dh.apply(this,arguments);try{GFX.render('hub')}catch(e){console.warn(e)}return r};
+ const _st=settings;settings=function(tab,back){const r=_st.apply(this,arguments);if((tab||'controls')=='display'){try{const bx=document.getElementById('box'),bs=[...bx.querySelectorAll('button')],bk=bs[bs.length-1];const b=document.createElement('button');const lab={high:'High',low:'Low',off:'Off (classic canvas)'};b.textContent='Graphics quality: '+lab[GFX.q]+(GFX.gl?'':' - WebGL unavailable');b.onclick=()=>{if(!GFX.gl)return;const o=['high','low','off'];GFX.set(o[(o.indexOf(GFX.q)+1)%3]);settings('display')};if(bk)bk.parentNode.insertBefore(b,bk);else bx.appendChild(b)}catch(e){}}return r}}
+GFX.init();
+
 </script></body></html>
