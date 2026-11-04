@@ -469,9 +469,9 @@ function update(){tick++;if(mode!='combat'||isModal()){pressed.clear();return}P.
  if(run.time%(has('prism')?120:240)==0&&P.mp<P.mmp)P.mp++;
  // spell + talent
  if(I.spellP){const sp=SPELLS[P.spell];if(P.mp>=sp.c){P.mp-=sp.c;const n0=L.pshots.length;sp.cast();for(let i=n0;i<L.pshots.length;i++){L.pshots[i].dmg+=2*CU('spp')+(has('hexlens')?3:0);if(has('lantern'))L.pshots[i].dmg=Math.round(L.pshots[i].dmg*2.5+5)}sfx('spell');burst(P.x+3,P.y+3,'#b05ae0',8);shake=Math.max(shake,3)}else log('Not enough mana!','#6fc8ff')}
- if(I.talP&&has('wrath')){if(tick-(P.wrMsg||-999)>120){P.wrMsg=tick;log('Wrath Engine: Dark Aegis is sealed.','#ff5a5a')}}else if(I.talP&&P.talCD<=0){P.blockT=Math.round((50+12*CU('aeg'))*(has('ashard')?2:1));sfx('block');P.talCD=Math.round(480*(1-.3*ML('aegis'))*(has('ashard')?.8:1));log('Dark Aegis! Projectiles are reflected.','#c890ff');burst(P.x+3,P.y+4,'#6a2a9a',16)}
+ if(I.talP&&has('wrath')){if(tick-(P.wrMsg||-999)>120){P.wrMsg=tick;log('Wrath Engine: Dark Aegis is sealed.','#ff5a5a')}}else if(I.talP&&P.talCD<=0){P.blockT=Math.round((50+12*CU('aeg'))*(has('ashard')?2:1));if(syn('mirror')){for(let i=0;i<8;i++){const a=i/8*Math.PI*2;pshot({x:P.x+1,y:P.y+2,vx:Math.cos(a)*2.6,vy:Math.sin(a)*2.6,dmg:atk(),s:'orb',c:'#b05ae0'})}synFx('mirror',P.x+3,P.y)}sfx('block');P.talCD=Math.round(480*(1-.3*ML('aegis'))*(has('ashard')?.8:1));log('Dark Aegis! Projectiles are reflected.','#c890ff');burst(P.x+3,P.y+4,'#6a2a9a',16)}
  const inp=(I.r?1:0)-(I.l?1:0);
- if(P.dashT>0){P.dashT--;P.vx=P.face*MV.dashV;P.vy=0;P.trail.push({x:P.x,y:P.y,f:P.face,a:.55});if(tick%2)L.parts.push({x:P.x+3,y:P.y+4,vx:0,vy:0,life:14,c:'#b05ae0'});if(has('cloak')){P.inv=Math.max(P.inv,2);for(const e of L.mobs)if(e.dashHit!=P.dashId&&ov(P,e)){e.dashHit=P.dashId;e.hp-=atk();e.fl=tick;burst(e.x+e.w/2,e.y+e.h/2,'#b05ae0',8)}}
+ if(P.dashT>0){P.dashT--;P.vx=P.face*MV.dashV;P.vy=0;P.trail.push({x:P.x,y:P.y,f:P.face,a:.55});if(tick%2)L.parts.push({x:P.x+3,y:P.y+4,vx:0,vy:0,life:14,c:'#b05ae0'});if(has('cloak')){P.inv=Math.max(P.inv,2);for(const e of L.mobs)if(e.dashHit!=P.dashId&&ov(P,e)){e.dashHit=P.dashId;e.hp-=atk();if(syn('phantom')){e.hp-=atk();synFx('phantom',e.x+e.w/2,e.y+e.h/2)}e.fl=tick;burst(e.x+e.w/2,e.y+e.h/2,'#b05ae0',8)}}
   if(P.buf>0&&(P.coy>0||(ML('boots')||has('boots'))&&P.airJ>0))P.dashT=0;
   if(P.dashT<=0){P.vx=P.face*P.spd*MV.dashCarry;P.dashEnd=1}}
  if(P.dashT<=0){if(P.kbT<=0){const tgt=inp*P.spd*(P.blockT>0?.4:1)*(P.atkT>0&&P.ground?MV.atkMove:1);if(inp&&(P.atkT<=0||P.atkT<5))P.face=inp;
@@ -482,7 +482,7 @@ function update(){tick++;if(mode!='combat'||isModal()){pressed.clear();return}P.
   if(P.buf>0&&P.coy>0){P.vy=MV.jumpV;P.jt=0;P.buf=0;P.coy=0;P.sx=.75;P.sy=1.3;sfx('jump');burst(P.x+3,P.y+P.h,'#b8a888',5)}else if(P.buf>0&&(ML('boots')||has('boots'))&&P.airJ>0){P.vy=-3.9;P.jt=0;P.buf=0;P.airJ--;P.sx=.8;P.sy=1.25;sfx('djump');burst(P.x+3,P.y+P.h,'#ffffff',10)}P.jt=(P.jt||0)+1;if(!I.jump&&P.vy<MV.cutV&&P.jt>=MV.minJump)P.vy=MV.cutV;
   if(P.dashBuf>0&&P.canDash&&P.dashCD<=0&&has('greaves')){P.dashBuf=0;if(tick-(P.grvMsg||-999)>120){P.grvMsg=tick;log('Ironbound Greaves: you cannot dash.','#ff5a5a')}}if(P.dashBuf>0&&P.canDash&&P.dashCD<=0&&!has('greaves')){if(inp)P.face=inp;sfx('dash');P.dashT=MV.dashT;P.dashBuf=0;P.dashId++;P.dashCD=Math.round(28*(1-.2*ML('dash'))*(has('spur')?.7:1)*(has('qsilver')?.7:1)*(1-.08*CU('dash')));P.canDash=0;P.sx=1.3;P.sy=.8;burst(P.x+3,P.y+4,'#5a2a80',6)}}
  // weighty swing: 4f wind-up, 6 active frames, recovery
- if(P.atkBuf>0&&P.atkCD<=0){P.atkBuf=0;sfx('slash');P.atkT=MV.atkT;P.atkCD=Math.round(MV.atkCD*(has('gloves')?.75:1));P.swing++;P.atkDir=I.u?'up':I.dn?(P.ground?'low':'down'):'side';if(P.atkDir=='low')P.dropPend=0;if(meta.mouseAim&&!I.u&&!I.dn&&L.camX!=null){const dx=L.camX+MS.x/Z-(P.x+P.w/2),dy=L.camY+MS.y/Z-(P.y+P.h/2);if(dy<-Math.abs(dx)*1.2)P.atkDir='up';else if(dy>Math.abs(dx)*1.2&&!P.ground)P.atkDir='down';else{P.atkDir='side';P.face=dx<0?-1:1}}if(has('tome')&&P.swing%4==0){const d=P.atkDir=='up'?[0,-1]:P.atkDir=='down'?[0,1]:[P.face,0];pshot({x:P.x+1,y:P.y+2,vx:d[0]*3,vy:d[1]*3,dmg:atk()+2,s:'fireball',c:'#ff8a2a'})}}
+ if(P.atkBuf>0&&P.atkCD<=0){P.atkBuf=0;sfx('slash');P.atkT=MV.atkT;P.atkCD=Math.round(MV.atkCD*(has('gloves')?.75:1));P.swing++;P.atkDir=I.u?'up':I.dn?(P.ground?'low':'down'):'side';if(P.atkDir=='low')P.dropPend=0;if(meta.mouseAim&&!I.u&&!I.dn&&L.camX!=null){const dx=L.camX+MS.x/Z-(P.x+P.w/2),dy=L.camY+MS.y/Z-(P.y+P.h/2);if(dy<-Math.abs(dx)*1.2)P.atkDir='up';else if(dy>Math.abs(dx)*1.2&&!P.ground)P.atkDir='down';else{P.atkDir='side';P.face=dx<0?-1:1}}if(has('tome')&&P.swing%(syn('quickdraw')?3:4)==0){const d=P.atkDir=='up'?[0,-1]:P.atkDir=='down'?[0,1]:[P.face,0];if(syn('quickdraw')&&P.swing%4)synFx('quickdraw',P.x+3,P.y);if(syn('firestorm')){for(const sp of[-.5,.5])pshot({x:P.x+1,y:P.y+2,vx:d[0]*3+(d[0]?0:sp*3),vy:d[1]*3+(d[1]?0:sp*3),dmg:atk()+2,s:'fireball',c:'#ff8a2a'});synFx('firestorm',P.x+3,P.y)}pshot({x:P.x+1,y:P.y+2,vx:d[0]*3,vy:d[1]*3,dmg:atk()+2,s:'fireball',c:'#ff8a2a'})}}
  if(P.atkT==12&&(P.atkDir=='side'||P.atkDir=='low')&&P.ground)P.vx+=P.face*MV.lunge;
  if(P.dropT>0)P.dropT--;if(I.dnP&&P.ground&&!I.jumpP)P.dropPend=MV.dropDelay;let doDrop=I.dn&&I.jumpP;if(P.dropPend>0){P.dropPend--;if(P.atkBuf>0||P.atkT>0||I.jumpP)P.dropPend=0;else if(P.dropPend===0)doDrop=true}if(doDrop&&P.ground&&onPlat()){P.dropT=14;P.y+=1;P.ground=0;P.vy=Math.max(P.vy,1);P.buf=0;P.coy=0}P.drop=P.dropT>0;
  {const mdir=Math.sign(P.vx);moveX(P);if(P.hitWall&&mdir==inp&&inp&&!P.ground&&P.vy>-1.5)for(let up=1;up<=MV.ledge;up++)if(freeBox(P.x+mdir,P.y-up,P.w,P.h)){P.y-=up;P.x+=mdir;P.vx=mdir*P.spd*.6;break}}
@@ -498,7 +498,7 @@ function update(){tick++;if(mode!='combat'||isModal()){pressed.clear();return}P.
  if(P.y>L.h*8+16){P.x=P.safe.x;P.y=P.safe.y;P.vx=P.vy=0}
  // sword hits
  if(P.atkT>0){P.atkT--;if(P.atkT>=6&&P.atkT<=12){const sb=swordBox();let pogo=false;
-  for(const e of L.mobs)if(e.hitBy!=P.swing&&!e.hidden&&!e.imm&&ov(sb,e)){if(e.shield&&(P.atkDir=='side'||P.atkDir=='low')&&Math.sign((P.x+P.w/2)-(e.x+e.w/2))==e.face){e.hitBy=P.swing;sfx('block');burst(e.x+(e.face>0?e.w:0),e.y+e.h/2,'#ffd24a',8);L.fx.push({x:e.x+e.w/2,y:e.y-4,t:tick,s:'BLOCK',c:'#9aa3b8'});P.vx-=P.face*1.5;continue}e.hitBy=P.swing;sfx('hit');const cr=has('glassc')||Math.random()<.05*CU('crit')+(has('hawk')?.1:0),d=(atk()+R(2))*(cr?(has('exring')?3:2):1);if(has('pact')){P.pactN=(P.pactN||0)+1;if(P.pactN%4==0&&P.hp<P.mhp){heal(1);L.fx.push({x:P.x+3,y:P.y-6,t:tick,s:'+1',c:'#ff6f8f'})}}e.hp-=d;if(cr)sfx('hit');e.fl=tick;hitstop=MV.hitstop;shake=Math.max(shake,4);P.mp=Math.min(P.mmp,P.mp+1);
+  for(const e of L.mobs)if(e.hitBy!=P.swing&&!e.hidden&&!e.imm&&ov(sb,e)){if(e.shield&&(P.atkDir=='side'||P.atkDir=='low')&&Math.sign((P.x+P.w/2)-(e.x+e.w/2))==e.face){e.hitBy=P.swing;sfx('block');burst(e.x+(e.face>0?e.w:0),e.y+e.h/2,'#ffd24a',8);L.fx.push({x:e.x+e.w/2,y:e.y-4,t:tick,s:'BLOCK',c:'#9aa3b8'});P.vx-=P.face*1.5;continue}e.hitBy=P.swing;sfx('hit');const cr=has('glassc')||Math.random()<.05*CU('crit')+(has('hawk')?.1:0),d=(atk()+R(2))*(cr?(has('exring')?3:2):1);if(has('pact')){P.pactN=(P.pactN||0)+1;if(P.pactN%4==0&&P.hp<P.mhp){heal(1);L.fx.push({x:P.x+3,y:P.y-6,t:tick,s:'+1',c:'#ff6f8f'})}}e.hp-=d;e.crit=cr;if(cr)sfx('hit');e.fl=tick;hitstop=MV.hitstop;shake=Math.max(shake,4);P.mp=Math.min(P.mmp,P.mp+1);
    L.fx.push({x:e.x+e.w/2,y:e.y-2,t:tick,s:cr?d+'!':''+d,c:cr?'#ffd24a':'#fff'});burst(e.x+e.w/2,e.y+e.h/2,'#fff',7);
    if(!e.boss){e.kb=12;e.vx=(P.atkDir=='side'||P.atkDir=='low'?P.face:Math.sign(e.x-P.x)||1)*2.8;if(e.ai!='fly')e.vy=P.atkDir=='up'?-2.8:-1.4;else e.vy=P.atkDir=='down'?2:P.atkDir=='up'?-2:0}
    if(P.atkDir=='down')pogo=true;else if(P.atkDir=='side'&&P.kbT<=0)P.vx-=P.face*1.4}
@@ -517,9 +517,9 @@ function update(){tick++;if(mode!='combat'||isModal()){pressed.clear();return}P.
   for(const pr of L.props)if(!pr.dead&&ov(s,pr)){pr.dead=1;addGold(2+R(4));burst(pr.x+3,pr.y+3,'#ffd24a',8)}
   if(tick%2)L.parts.push({x:s.x+2,y:s.y+2,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,life:14,c:s.c})}
  L.pshots=L.pshots.filter(s=>!s.dead);L.props=L.props.filter(p=>!p.dead);
- for(const e of L.mobs)if(e.hp<=0&&!e.dead){e.dead=1;run.kills++;sfx('kill');P.xp+=e.xp;burst(e.x+e.w/2,e.y+e.h/2,'#e0403a',16);const g=addGold(1+R(3)*act);
+ for(const e of L.mobs)if(e.hp<=0&&!e.dead){e.dead=1;run.kills++;sfx('kill');P.xp+=e.xp;burst(e.x+e.w/2,e.y+e.h/2,'#e0403a',16);const g=addGold(1+R(3)*act+(syn('goldrush')?1:0));if(syn('goldrush')&&run.kills%3==0)synFx('goldrush',e.x+e.w/2,e.y);if(syn('exblaze')&&e.crit){synFx('exblaze',e.x+e.w/2,e.y+e.h/2);for(const o of L.mobs)if(o!=e&&!o.dead&&Math.hypot(o.x-e.x,o.y-e.y)<40){o.hp-=6;o.fl=tick}burst(e.x+e.w/2,e.y+e.h/2,'#ff8a2a',24);shake=Math.max(shake,6)}
   if(has('sigil')&&!L.sigil&&P.hp<P.mhp){L.sigil=1;heal(1);log('Cursed Sigil: +1 Heart','#c890ff')}if(has('fang')&&run.kills%10==0){heal(1);log('Vampire Fang: +1 Heart','#ccc')}if(hasT('vamp')&&run.kills%6==0){heal(1);log('Vampirism: +1 Heart','#f66')}
-  if(has('storm')&&Math.random()<.35){const t=nearest(e.x,e.y,e);if(t&&Math.hypot(t.x-e.x,t.y-e.y)<120){t.hp-=8;t.fl=tick;L.bolts.push({x1:e.x+e.w/2,y1:e.y+e.h/2,x2:t.x+t.w/2,y2:t.y+t.h/2,t:tick});L.fx.push({x:t.x+t.w/2,y:t.y-2,t:tick,s:'8',c:'#6fe8ff'})}}
+  if(has('storm')&&Math.random()<(syn('bloodstorm')?.75:.35)){const t=nearest(e.x,e.y,e);if(t&&Math.hypot(t.x-e.x,t.y-e.y)<120){if(syn('bloodstorm'))synFx('bloodstorm',t.x+t.w/2,t.y);t.hp-=8;t.fl=tick;L.bolts.push({x1:e.x+e.w/2,y1:e.y+e.h/2,x2:t.x+t.w/2,y2:t.y+t.h/2,t:tick});L.fx.push({x:t.x+t.w/2,y:t.y-2,t:tick,s:'8',c:'#6fe8ff'})}}
   log(`The ${e.n} is slain! +${e.xp} XP, +${g}g`,'#8f8');if(R(7)==0)L.items.push({x:e.x,y:e.y,w:6,h:6,vx:0,vy:-2});dropLoot(e);lvl();if(e.boss){shake=25;sfx('roar')}}
  L.mobs=L.mobs.filter(e=>!e.dead);
  for(const e of L.mobs)if(!e.hidden&&ov(P,e))hurt(e.dmg,e.x+e.w/2);stepHaz();stepLore();
@@ -814,8 +814,8 @@ function settings(tab='controls',back){if(back)settingsBack=back;const tabs=`<di
 function pauseMenuOld(){modal('Paused',`${P.heir.name} &middot; Act ${act} &middot; ${F?F.rooms.filter(r=>r.L&&r.L.cleared).length+'/'+F.rooms.length+' rooms':''}`,[{t:'Resume',p:1,f:closeModal},{t:'Settings',f:()=>settings('controls',pauseMenu)},{t:'Abandon run (counts as death)',f:()=>{closeModal();die()}}])}
 // ---------- end of run ----------
 function endRun(won){bankCoins();clearSave();if(mode=='dead')return;mode='dead';P.dead=1;const earned=has('furnace')?0:P.gold+(won?200:0);if(has('furnace'))log('Soul Furnace: Charon takes all your gold.','#ff5a5a');meta.gold+=earned;meta.best=Math.max(meta.best||0,act);if(won)meta.wins=(meta.wins||0)+1;meta.gen++;meta.heirs=null;saveMeta();cv.style.filter='';
- const h=P.heir;mode='title';modal(won?'Victory!':'Thou Art Slain',(won?'The Demon Lord is dead. The vow is fulfilled; the blood of the Fallen Paladin is free.<br><br>':'<i style="color:#c890ff">The vow passes to the next of the blood...</i><br><br>')+`<b>${h.name}</b> (${h.traits.map(t=>TB[t].n).join(', ')||'no traits'})<br>Act ${act}, floor ${pos?pos.r+1:0} &middot; Level ${P.lv}<br>Kills ${run.kills} &middot; Rooms cleared ${run.rooms} &middot; Floors ${run.floors} &middot; Time ${Math.round(run.time/60)}s<br>Relics: ${P.relics.length}<br>Gold sent to the family vault: <b style="color:#ffd24a">+${earned}</b>`,
- [{t:'Return to Ashenmere',p:1,f:manor}])}
+ const h=P.heir;mode='title';modal(won?'Victory!':'Thou Art Slain',(won?'The Demon Lord is dead. The vow is fulfilled; the blood of the Fallen Paladin is free.<br><br>':'<i style="color:#c890ff">The vow passes to the next of the blood...</i><br><br>')+`<b>${h.name}</b> (${h.traits.map(t=>TB[t].n).join(', ')||'no traits'})<br>Act ${act}, floor ${pos?pos.r+1:0} &middot; Level ${P.lv}<br>Kills ${run.kills} &middot; Rooms cleared ${run.rooms} &middot; Floors ${run.floors} &middot; Time ${Math.round(run.time/60)}s<br>Relics: ${P.relics.length}<br>Gold sent to the family vault: <b style="color:#ffd24a">+${earned}</b>`+almostHTML(earned),
+ [{t:'Quick Start (next heir)',p:1,f:quickStart},{t:'Return to Ashenmere',f:manor}])}
 function die(){sfx('death');log('Your tale ends here. The vow passes to the next of the blood...','#f00');endRun(false)}function win(){endRun(true)}
 // ---------- HUD / keys / loop ----------
 let maskURL,maskEURL;
@@ -890,7 +890,7 @@ let menuReturn=null;
 function credits(){modal('Credits','<b style="color:#ffd24a">Fallen Vow</b><br>A game by Chris Francis, built with Grok Bot.<br><br><b>Art:</b> original code-drawn pixel art, styled after the look of Kingdom Survivors (no assets copied).<br><b>Music &amp; SFX:</b> synthesized live with the WebAudio API.<br><b>Inspired by:</b> Slay the Spire (map &amp; relics), Rogue Legacy 2 (castles, heirs, Manor), Hollow Knight (combat feel).<br><br>Thanks for playing!',[{t:'Back',p:1,f:mainMenu}])}
 let riBack=null;
 function relicIndex(filter='all',back){if(back)riBack=back;const seen=new Set(meta.seenRelics),rs=RELICS.filter(r=>filter=='all'||r.r==filter);
- const tabs=['all','starter','common','uncommon','rare','boss','shop','cursed'].map(f=>`<span onclick="sfx('click');relicIndex('${f}')" style="cursor:pointer;padding:3px 8px;border:3px solid ${f==filter?'#ffd24a':'#5a4630'};background:${f==filter?'#3d2e48':'#1e1a34'};color:${RAR[f]||'#e8e0d0'}">${f}</span>`).join(' ');
+ const tabs=['all','starter','common','uncommon','rare','boss','shop','cursed','synergy'].map(f=>`<span onclick="sfx('click');relicIndex('${f}')" style="cursor:pointer;padding:3px 8px;border:3px solid ${f==filter?'#ffd24a':'#5a4630'};background:${f==filter?'#3d2e48':'#1e1a34'};color:${RAR[f]||'#e8e0d0'}">${f}</span>`).join(' ');
  modal('Relic Index',`<div style="margin-bottom:6px">${tabs}</div><small>Discovered ${RELICS.filter(r=>seen.has(r.id)).length} / ${RELICS.length}. All effects are shown so you can plan builds.</small>
  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-top:8px">`+rs.map(r=>{const d=seen.has(r.id);return`<div style="border:3px solid ${RAR[r.r]};background:#1e1a34;padding:6px;display:flex;gap:8px;align-items:flex-start;opacity:${d?1:.72}">
  <img class="${d?relCls(r.id):""}" src="${SP['rel_'+r.id].toDataURL()}" width="40" height="40" style="image-rendering:pixelated;${d?'':'filter:grayscale(1) brightness(.7)'}"><div style="font-size:11px"><b style="color:${RAR[r.r]}">${r.n}</b><br><small style="color:${RAR[r.r]}">${r.r}</small> ${d?'<small style="color:#6fe86f">&#10003; discovered</small>':'<small style="color:#888">undiscovered</small>'}<br>${relDesc(r)}</div></div>`}).join('')+'</div>',[{t:'Back',p:1,f:()=>(riBack||mainMenu)()}],1)}
@@ -1218,7 +1218,7 @@ function hubBack(){closeModal();mode='hub';HUBON=1;hud()}
 const manorOld=manor;manor=function(){enterHub()};
 function hubHeir(){return meta.heirs[meta.chosen]||meta.heirs[0]}
 function hubNear(){return STN.find(s=>Math.abs(HB2.x+3-(s.x+s.w/2))<s.w/2+6)}
-function hubUpdate(){if(mode!='hub'){return}const I=readInput();pressed.clear();const h=HB2;h.t++;
+function hubUpdate(){if(mode!='hub'){return}const qs=pressed.has('q');const I=readInput();pressed.clear();if(qs){quickStart();return}const h=HB2;h.t++;
  if(I.pauseP){mainMenu();return}
  const ax=(I.r?1:0)-(I.l?1:0);h.vx+=(ax*1.6-h.vx)*(ax?.25:.3);if(ax)h.face=ax;
  if(I.jumpP&&h.g){h.vy=-3.4;h.g=0;sfx('jump')}if(!I.jump&&h.vy<-1.2)h.vy=-1.2;h.vy=Math.min(h.vy+.2,4.5);h.x=Math.max(4,Math.min(HUBW-10,h.x+h.vx));h.y+=h.vy;if(h.y>=HGY-8){if(!h.g&&h.vy>2)sfx('land'in SFX?'land':'');h.y=HGY-8;h.vy=0;h.g=1}
@@ -1232,7 +1232,7 @@ function hubStation(id){const H=hubHeir();
    {t:'Withdraw all (fee '+fee+'g, get '+(meta.bank-fee)+'g)',dis:!meta.bank,f:()=>{meta.gold+=meta.bank-fee;meta.bank=0;saveMeta();sfx('coin');hubStation('bank')}},{t:'Leave',f:hubBack}])}
  else if(id=='shrine')heirSelect();
  else if(id=='lib')modal('The Old Library','<i style="color:#c8bca0">Dusty shelves hold everything the bloodline has learned of the Demon Lord\u2019s castle.</i>',[{t:'Journal of the Vow',p:1,f:()=>journal(hubBack)},{t:'Relic Index',f:()=>relicIndex('all',hubBack)},{t:'Chronicle (replay intro)',f:()=>playIntro(enterHub)},{t:'Credits',f:()=>{credits();modalBtns[0].f=hubBack}},{t:'Leave',f:hubBack}]);
- else if(id=='gate')charon(H)}
+ else if(id=='gate')modal('Castle Road','The road to the Demon Lord\u2019s castle.',[{t:'Approach the Gatekeeper',p:1,f:()=>charon(H)},{t:'Quick Start (pay toll, straight to first fight)',f:quickStart},{t:'Back to town',f:hubBack}])}
 // --- drawing ---
 function drawHub(){const h=HB2,Zh=Math.max(2,Math.round(VH/190)),vw=VW/Zh,cam=Math.max(0,Math.min(HUBW-vw,h.x-vw/2)),t=tick,oy=Math.round(VH/Zh-150);
  const X=x=>Math.round((x-cam)*Zh),Y=y=>Math.round((y+oy)*Zh),Rr=(c,x,y,w,hh)=>{cx.fillStyle=c;cx.fillRect(X(x),Y(y),Math.ceil(w*Zh),Math.ceil(hh*Zh))};
@@ -1279,7 +1279,7 @@ function drawHub(){const h=HB2,Zh=Math.max(2,Math.round(VH/190)),vw=VW/Zh,cam=Ma
  // top banner
  const H=hubHeir();cx.font='bold 16px "Courier New",monospace';cx.fillStyle='#120c18';const tyo=TC.on?44:0;cx.fillText(TOWN.toUpperCase()+' \u2014 IN THE SHADOW OF THE DEMON LORD\u2019S CASTLE',VW/2+2,30+tyo);cx.fillStyle='#ffd24a';cx.fillText(TOWN.toUpperCase()+' \u2014 IN THE SHADOW OF THE DEMON LORD\u2019S CASTLE',VW/2,28+tyo);
  cx.font='bold 12px "Courier New",monospace';cx.fillStyle='#c8bca0';cx.fillText(`Heir: ${H.name} \u00b7 Year ${vowYear()} of the Vow \u00b7 Vault ${meta.gold}g \u00b7 Banked ${meta.bank}g \u00b7 Soul Coins ${meta.souls}`,VW/2,48+tyo);
- cx.fillStyle='#8a7a5a';cx.fillText(`Walk ${KM.l.map(kname).join('/')} ${KM.r.map(kname).join('/')} \u00b7 Jump ${KM.jump.map(kname).join('/')} \u00b7 Interact ${KM.inter.map(kname).join('/')} \u00b7 ${KM.pause.map(kname).join('/')} Main menu`,TC.on?-999:VW/2,VH-14);cx.textAlign='left'}
+ cx.fillStyle='#8a7a5a';cx.fillText(`Walk ${KM.l.map(kname).join('/')} ${KM.r.map(kname).join('/')} \u00b7 Jump ${KM.jump.map(kname).join('/')} \u00b7 Interact ${KM.inter.map(kname).join('/')} \u00b7 Q Quick Start \u00b7 ${KM.pause.map(kname).join('/')} Main menu`,TC.on?-999:VW/2,VH-14);cx.textAlign='left'}
 function CK_smoke(x,y,t,Zh){for(let i=0;i<5;i++){const k=((t*.3+i*17)%85)/85;cx.fillStyle=`rgba(60,50,60,${.4*(1-k)})`;cx.beginPath();cx.arc(x+k*14*Zh,y+20*Zh-k*40*Zh,(2+k*6)*Zh,0,7);cx.fill()}}
 
 // ---------- TOUCH CONTROLS (phones / tablets) ----------
@@ -1318,12 +1318,13 @@ function buildTouch(){let root=$('touch');if(root)root.remove();root=document.cr
  B('tal','2<br>AEGIS','tal',178,92,56,'rgba(140,60,160,.7)');
  B('heal','4<br>POTION','heal',214,22,56,'rgba(200,60,140,.7)');
  B('inter','E','inter',112,178,58,'rgba(255,190,60,.8)');
+ B('quick','QUICK<br>START','',214,100,64,'rgba(60,150,80,.8)',()=>{if(mode=='hub')quickStart()});
  const pz=B('pause','II','',0,0,46,'rgba(30,26,52,.85)',()=>{if(mode=='hub')mainMenu();else if(mode=='combat'||mode=='map')pauseMenu()});
  pz.style.bottom='';pz.style.top=`calc(8px + env(safe-area-inset-top))`;pz.style[L?'left':'right']='calc(50% - 23px)';pz.style.left=L?'':'calc(50% - 23px)';pz.style.right='';
  touchVis()}
 function interActive(){if(mode=='hub')return!!hubNear();if(mode!='combat'||!L||!P)return 0;const near=o=>o&&Math.abs((o.x+(o.w||8)/2)-(P.x+P.w/2))<18&&Math.abs((o.y+(o.h||8)/2)-(P.y+P.h/2))<20;return near(L.portal)||(L.chests||[]).some(c=>!c.open&&!c.opened&&near(c))}
 function touchVis(){const root=$('touch');if(!root)return;const show=TC.on&&(mode=='combat'||mode=='hub'||mode=='map')&&!isModal();root.style.display=show?'block':'none';if(!show)return;
- const cb=mode=='combat';for(const id of['atk','dash','spell','tal','heal'])TC.btns[id].style.display=cb?'flex':'none';TC.btns.jump.style.display=mode=='map'?'none':'flex';
+ const cb=mode=='combat';for(const id of['atk','dash','spell','tal','heal'])TC.btns[id].style.display=cb?'flex':'none';TC.btns.jump.style.display=mode=='map'?'none':'flex';if(TC.btns.quick)TC.btns.quick.style.display=mode=='hub'?'flex':'none';
  if(mode=='map'){TC.btns.atk.style.display='flex';TC.btns.atk.innerHTML='GO'}else TC.btns.atk.innerHTML='ATK';
  const ia=interActive();const e=TC.btns.inter;e.style.display=(mode=='combat'||mode=='hub')&&ia?'flex':'none';e.style.boxShadow=ia?`0 0 ${10+6*Math.sin(tick/6)}px 4px #ffd24a`:'';
  $('tjz').style.display=mode=='map'?'none':'block';
@@ -1383,6 +1384,38 @@ cv.addEventListener('wheel',e=>{if(mode!='map'||isModal())return;e.preventDefaul
 {const _lg=log;log=function(){MC.logT=performance.now();return _lg.apply(this,arguments)}}
 addEventListener('resize',()=>{if(MAP)mapClampCam()});
 
+// ---------- RETENTION: almost-there screen, quick start, relic synergies ----------
+meta.syn=meta.syn||[];
+const SYN=[
+ {id:'bloodstorm',n:'Bloodstorm',a:'fang',b:'storm',d:'Chain lightning fires on 75% of kills (up from 35%) and crackles red.'},
+ {id:'exblaze',n:'Executioner\u2019s Blaze',a:'hawk',b:'exring',d:'Killing a foe with a critical hit makes it explode (6 damage nearby).'},
+ {id:'phantom',n:'Phantom Rend',a:'cloak',b:'spur',d:'Dashing through foes cuts them twice and leaves a shadow burst.'},
+ {id:'mirror',n:'Dark Mirror',a:'ashard',b:'cloak',d:'Raising Dark Aegis fires a ring of 8 shadow bolts.'},
+ {id:'firestorm',n:'Firestorm',a:'tome',b:'storm',d:'Ember Tome fireballs come out as a three-way spread.'},
+ {id:'quickdraw',n:'Quick Draw',a:'gloves',b:'tome',d:'Ember Tome fires on every 3rd slash instead of every 4th.'},
+ {id:'goldrush',n:'Gold Rush',a:'lode',b:'purse',d:'Every kill also drops 1 bonus gold, and it flies straight to you.'}];
+const SB=Object.fromEntries(SYN.map(s=>[s.id,s]));
+function syn(id){const s=SB[id];return!!(P&&s&&has(s.a)&&has(s.b))}
+function synFx(id,x,y){const s=SB[id];if(L&&x!=null){burst(x,y,'#ffd24a',14);L.fx&&L.fx.push({x,y:y-6,t:tick,s:s.n.toUpperCase(),c:'#ffd24a'})}
+ if(!meta.syn.includes(id)){meta.syn.push(id);saveMeta();sfx('relic');synToast(`SYNERGY DISCOVERED: ${s.n}`,`${RB[s.a].n} + ${RB[s.b].n}<br>${s.d}`);log(`Synergy! ${s.n}: ${s.d}`,'#ffd24a')}}
+function synToast(t,b){let el=$('syntoast');if(!el){el=document.createElement('div');el.id='syntoast';el.className='panel';el.style.cssText='position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);z-index:30;max-width:min(520px,90vw);padding:10px 14px;text-align:center;pointer-events:none;transition:opacity .4s;border-color:#ffd24a;box-shadow:0 0 0 3px #120c18,0 0 24px #ffd24a88';document.body.appendChild(el)}
+ el.innerHTML=`<b style="color:#ffd24a;font-size:15px">&#10022; ${t} &#10022;</b><br><small>${b}</small>`;el.style.opacity=1;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.style.display='none',450)},4200)}
+{const _gr=gainRelic;gainRelic=function(id){_gr.apply(this,arguments);if(!id||!P)return;for(const s of SYN)if((s.a==id||s.b==id)&&has(s.a)&&has(s.b))log(`Synergy formed: ${s.n} (${RB[s.a].n} + ${RB[s.b].n})`,'#ffd24a')}}
+function synIndexHTML(){return`<div style="margin-top:12px"><b style="color:#ffd24a">RELIC SYNERGIES</b> <small>${meta.syn.length} / ${SYN.length} discovered. Hold both relics of a pair to activate one.</small><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-top:6px">`+
+ SYN.map(s=>{const d=meta.syn.includes(s.id);return`<div style="border:3px solid ${d?'#ffd24a':'#3a3050'};background:#1e1a34;padding:6px;opacity:${d?1:.7}"><b style="color:${d?'#ffd24a':'#888'}">${d?s.n:'??? Undiscovered'}</b><br><small style="color:#c8bca0">${RB[s.a].n} + ${RB[s.b].n}</small><br><small>${d?s.d:'Activate this pair once to reveal it.'}</small></div>`}).join('')+'</div></div>'}
+// ---- almost-there ----
+function nearestUpgrade(){let best=null;for(const m of MANOR){const lv=ML(m.id);if(lv>=m.max||(m.req&&!ML(m.req)))continue;const need=m.c[lv]-meta.gold;const o={n:m.n,lv:lv+1,need,cur:'g'};if(!best||need<best.need)best=o}
+ let bs=null;for(const u of CUPS){const lv=((meta.cu.bk||{})[u.id])||0;if(lv>=u.max)continue;const need=cuCost(u,lv)-meta.souls;if(!bs||need<bs.need)bs={n:u.n,lv:lv+1,need,cur:' Soul Coins'}}return[best,bs]}
+function almostHTML(earned){const[g,s]=nearestUpgrade(),f=o=>!o?'':o.need<=0?`<b style="color:#6fe86f">${o.n} ${o.lv} is affordable now!</b>`:`<b style="color:#ffd24a">${o.n} ${o.lv}: ${o.need}${o.cur} away</b>`;
+ const nl=(meta.journal||[]).slice(run.j0??(meta.journal||[]).length).map(i=>LORE[i][0]),nr=meta.seenRelics.slice(run.r0??meta.seenRelics.length).map(i=>RB[i]?RB[i].n:i),ns=meta.syn.slice(run.s0??meta.syn.length).map(i=>SB[i].n);
+ return`<div style="margin-top:10px;padding:8px;border:3px solid #c9a24a;background:#1e1a34"><b style="color:#ffd24a">ALMOST THERE</b><br>Gold earned: <b style="color:#ffd24a">+${earned}g</b> &middot; Vault ${meta.gold}g &middot; Banked <b style="color:#6fe8a0">${meta.bank||0}g</b><br>Blacksmith: ${f(g)||'all bloodline upgrades owned'}<br>Soul Forge: ${f(s)||'fully forged'}`+
+ (nl.length||nr.length||ns.length?`<br><span style="color:#c890ff">New this run:</span> `+[...nr.map(n=>'Relic: '+n),...nl.map(n=>'Lore: '+n),...ns.map(n=>'Synergy: '+n)].join(' &middot; '):'<br><small>No new relics or lore this run.</small>')+'</div>'}
+// ---- quick start ----
+function quickStart(){HUBON=1;if(!meta.heirs){meta.heirs=rollHeirs();meta.chosen=0}const h=meta.heirs[meta.chosen]||meta.heirs[0],toll=Math.round(meta.gold*Math.max(0,1-.2*ML('toll')));meta.gold-=toll;meta.heirs=null;saveMeta();closeModal();CUT=null;$('skip')&&($('skip').style.display='none');
+ newRun(h);if(toll)log(`The Gatekeeper takes ${toll}g (bank gold first to keep it).`,'#ff8a5a');log('Quick Start! Straight into the first fight.','#ffd24a');const av=avail(),n=av.find(n=>n.t=='M')||av[0];if(n)chooseNode(n);window.QS_T=performance.now()}
+{const _nr=newRun;newRun=function(h){_nr.apply(this,arguments);run.j0=(meta.journal||[]).length;run.r0=meta.seenRelics.length;run.s0=meta.syn.length}}
+
+{const _ri=relicIndex;relicIndex=function(f='all',b){_ri(f,b);const g=[...$('box').querySelectorAll('div')].find(d=>d.style.display=='grid');if(!g)return;if(f=='synergy')g.outerHTML=synIndexHTML();else if(f=='all')g.insertAdjacentHTML('afterend',synIndexHTML())}}
 applyTouch();MC.legend=!TC.on;
 cv.addEventListener('mousedown',e=>{if(mode=='cutscene'){e.stopImmediatePropagation();cutNext()}},true);
 MAP=genMap();act=1;title();requestAnimationFrame(loop);
