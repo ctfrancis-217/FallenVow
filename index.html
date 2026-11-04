@@ -836,7 +836,7 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(mode=='cutscene'){
  if(mode=='combat'){held.add(k);if(!e.repeat)pressed.add(k)}});
 document.addEventListener('mouseover',e=>{const id=e.target.dataset&&e.target.dataset.r,t=$('tip');if(!id){t.style.display='none';return}const r=RB[id];t.innerHTML=`<b style="color:${RAR[r.r]}">${r.n}</b><br><small style="color:${RAR[r.r]}">${r.r}</small><br>${relDesc(r)}`;const b=e.target.getBoundingClientRect();t.style.left=b.left+'px';t.style.top=(b.bottom+6)+'px';t.style.display='block'});
 addEventListener('keyup',e=>held.delete(e.key.toLowerCase()));addEventListener('blur',()=>held.clear());
-cv.addEventListener('click',e=>{if(mode!='map'||isModal())return;for(const[n,x,y,s]of nodeXY)if(Math.abs(e.clientX-x)<s/2+6&&Math.abs(e.clientY-y)<s/2+6)chooseNode(n)});
+cv.addEventListener('click',e=>{if(1)return;for(const[n,x,y,s]of nodeXY)if(Math.abs(e.clientX-x)<s/2+6&&Math.abs(e.clientY-y)<s/2+6)chooseNode(n)});
 cv.addEventListener('mousemove',e=>{if(mode!='map')return;const av=avail();for(const[n,x,y,s]of nodeXY)if(av.includes(n)&&Math.abs(e.clientX-x)<s/2+6&&Math.abs(e.clientY-y)<s/2+6)sel=av.indexOf(n)});
 let last=0,acc=0,FDT=16.7;const FT=[];function loop(ts){const t0=performance.now();FDT=Math.min(100,ts-last||16.7);acc+=FDT;last=ts;if(TC.on)touchVis();while(acc>=16.667){if(mode=='hub')hubUpdate();else if(mode=='modal'&&HUBON&&!P&&!isModal())mode='hub';update();acc-=16.667}
  {const pb=$('pbtn'),sh=runActive()&&(mode=='combat'||mode=='map'||mode=='modal')?'block':'none';if(pb.style.display!=sh)pb.style.display=sh}cx.imageSmoothingEnabled=false;setMusic(mode=='title'?'menu':mode=='combat'&&F?(F.cur.kind=='boss'&&L.mobs.length?'boss':'castle'):'menu');if(mode=='cutscene'&&CUT)drawCut();else if(mode=='hub'||(HUBON&&!P&&mode=='modal'))drawHub();else if(mode=='title')drawMenuBG();else if(mode=='combat'&&L&&F){const al=isModal()||hitstop>0?1:acc/16.667,ents=[P,...L.mobs],sv=ents.map(e=>[e.x,e.y]);for(const e of ents)if(e.ox!=null&&Math.abs(e.x-e.ox)<24&&Math.abs(e.y-e.oy)<24){e.x=e.ox+(e.x-e.ox)*al;e.y=e.oy+(e.y-e.oy)*al}drawLevel();ents.forEach((e,i)=>{e.x=sv[i][0];e.y=sv[i][1]})}else if(MAP)drawMap();FT.push(performance.now()-t0);if(FT.length>600)FT.shift();requestAnimationFrame(loop)}
@@ -1334,12 +1334,56 @@ function rotCheck(){let o=$('rot');if(!o){o=document.createElement('div');o.id='
 addEventListener('resize',rotCheck);addEventListener('orientationchange',()=>setTimeout(rotCheck,200));
 addEventListener('touchstart',e=>{if(!TC.detected){TC.detected=1;if(meta.touch.mode=='auto')applyTouch()}firstTap()},{passive:true});
 document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('dblclick',e=>e.preventDefault());
-let _lt=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-_lt<300&&e.target==cv)e.preventDefault();_lt=n},{passive:false});
+let _lt=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-_lt<300&&e.target==cv&&e.cancelable)e.preventDefault();_lt=n},{passive:false});
 function touchSettings(){const T=meta.touch,opt=(k,v,l)=>`<span onclick="meta.touch.${k}=${typeof v=='string'?`'${v}'`:v};saveMeta();applyTouch();settings('touch')" style="cursor:pointer;display:inline-block;margin:3px;padding:6px 12px;border:3px solid ${T[k]==v?'#ffd24a':'#5a4630'};background:${T[k]==v?'#3d2e48':'#1e1a34'}">${l}</span>`;
  return`Touch controls: ${opt('mode','auto','Auto')}${opt('mode','on','On')}${opt('mode','off','Off')}<br><small>Auto = shown on touch screens (detected: ${TC.detected?'YES':'NO'}).</small><br><br>Button size: ${opt('size',.8,'S')}${opt('size',1,'M')}${opt('size',1.25,'L')}${opt('size',1.5,'XL')}<br>Opacity: ${opt('op',.3,'Low')}${opt('op',.5,'Mid')}${opt('op',.7,'High')}<br>Layout: ${opt('left',0,'Right-handed')}${opt('left',1,'Left-handed (swap)')}<br><br><small>Left thumb: joystick (up aims up, down aims down / drops through planks / pogo / sweep). Right thumb: ATK, JUMP, DASH, 1 Spell, 2 Aegis, 4 Potion. E appears when you can interact. II pauses. Tap menu buttons and map nodes directly.</small>`}
 
 {const _dm=drawMinimap;drawMinimap=function(){if(!TC.on)return _dm();cx.save();cx.translate(VW,0);cx.scale(.55,.55);cx.translate(-VW,30);_dm();cx.restore()}}
-applyTouch();
+// ---------- INTERACTIVE MAP CAMERA (pan / pinch / wheel / tap-select) ----------
+const MSPX=58,MSPY=50,MC={x:0,y:0,z:1,key:'',legend:!TC.on,stats:0,vx:0,vy:0};
+const mw=n=>[(n.c-3)*MSPX+n.jx*2,-n.r*MSPY+n.jy];
+function mzClamp(z){const zmin=Math.max(.45,Math.min(1,VH/((MAP.ROWS+2)*MSPY))),zmax=3.2;return Math.max(zmin,Math.min(zmax,z))}
+function mapRecenter(){const av=avail(),pts=(av.length?av:[pos||MAP.nodes[0].find(n=>n)]).filter(Boolean).map(mw);if(!pts.length)return;MC.z=mzClamp(Math.min(2.2,VH/(5.2*MSPY)));MC.x=pts.reduce((a,p)=>a+p[0],0)/pts.length;MC.y=pts.reduce((a,p)=>a+p[1],0)/pts.length-MSPY*.8;MC.vx=MC.vy=0;mapClampCam()}
+function mapClampCam(){const all=[];MAP.nodes.forEach(r=>r.forEach(n=>n&&all.push(mw(n))));all.push(mw(MAP.boss));const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);MC.x=Math.max(Math.min(...xs),Math.min(Math.max(...xs),MC.x));MC.y=Math.max(Math.min(...ys)-MSPY,Math.min(Math.max(...ys)+MSPY,MC.y))}
+nxy=function(n){const[wx,wy]=mw(n);return[Math.round(VW/2+(wx-MC.x)*MC.z),Math.round(VH/2+(wy-MC.y)*MC.z)]};
+const _dmOld=drawMap;
+drawMap=function(){const key=act+':'+(pos?pos.r+','+pos.c:'s')+':'+(MAP.nodes.length);if(MC.key!=key){MC.key=key;mapRecenter()}
+ if(!MC.drag&&(MC.vx||MC.vy)){MC.x-=MC.vx/MC.z;MC.y-=MC.vy/MC.z;MC.vx*=.9;MC.vy*=.9;if(Math.abs(MC.vx)+Math.abs(MC.vy)<.1)MC.vx=MC.vy=0;mapClampCam()}
+ cx.fillStyle='#17131d';cx.fillRect(0,0,VW,VH);for(let i=0;i<260;i++){const x=((i*137)%1400-700-MC.x*.5)*MC.z*.5+VW/2,y=((i*311)%1400-1000-MC.y*.5)*MC.z*.5+VH/2;cx.fillStyle=i%2?'#1d1824':'#140f19';cx.fillRect(Math.round(x),Math.round(y),6,6)}
+ const z=MC.z,k=Math.max(2,Math.round(3*z)),s=Math.round(24*z),av=mode=='map'?avail():[];const all=[];MAP.nodes.forEach(r=>r.forEach(n=>n&&all.push(n)));
+ for(const a of all)for(const b of a.next){const[x1,y1]=nxy(a),[x2,y2]=nxy(b),Ln=Math.hypot(x2-x1,y2-y1),st=Math.max(3,Math.floor(Ln/(10*Math.max(.7,z))));const hot=a==pos&&av.includes(b);cx.fillStyle=a.done&&b.done?'#c9a45a':hot?'#f2c447':'#4a4058';for(let i=2;i<st-1;i++)cx.fillRect(Math.round(x1+(x2-x1)*i/st-k/2),Math.round(y1+(y2-y1)*i/st-k/2),k+1,k+1)}
+ nodeXY=[];for(const n of all.concat([MAP.boss])){const[x,y]=nxy(n),ss=s*(n.t=='B'?2:1);if(x<-ss*2||x>VW+ss*2||y<-ss*2||y>VH+ss*2){nodeXY.push([n,x,y,ss]);continue}const isA=av.includes(n),isS=isA&&av[sel]==n;
+  if(isA){const pu=Math.round(Math.sin(tick/8)*2*z+(isS?6:3)*z);cx.fillStyle=isS?'#f2c447':'#8a6a3a';cx.fillRect(x-ss/2-pu,y-ss/2-pu,ss+pu*2,ss+pu*2);cx.fillStyle='#17131d';cx.fillRect(x-ss/2-pu+k,y-ss/2-pu+k,ss+pu*2-2*k,ss+pu*2-2*k)}
+  cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(SP[NODE[n.t].s],Math.round(x-ss/2),Math.round(y-ss/2),ss,ss);cx.globalAlpha=1;
+  if(n.done&&n!=pos){cx.fillStyle='#c9a45a';cx.fillRect(x-ss/2,y+ss/2+2,ss,k)}if(n==pos&&P)cx.drawImage(SP[P.ch.s],Math.round(x+ss/2),Math.round(y-ss/2),Math.round(s*.8),Math.round(s*.8));nodeXY.push([n,x,y,ss])}
+ const sn=av[sel],T=TC.on;cx.textAlign='center';cx.font=`bold ${T?13:Math.max(16,Math.min(28,VW/42))}px "Courier New",monospace`;cx.fillStyle='#120c18';const tt=`ACT ${act}: ${ACTN[act-1].toUpperCase()}`;
+ if(T){cx.fillStyle='rgba(10,6,16,.75)';const line=tt+(sn?`  \u00b7  > ${NODE[sn.t].n.toUpperCase()} <  \u00b7  TAP AGAIN / GO`:'');const w=cx.measureText(line).width+20,mx0=290,mx1=VW-130,mc=(mx0+mx1)/2,yb=w>mx1-mx0?VH-90:VH-34;cx.fillRect((w>mx1-mx0?VW/2:mc)-w/2,yb,w,24);cx.fillStyle='#f2c447';cx.fillText(line,w>mx1-mx0?VW/2:mc,yb+17)}
+ else{cx.fillStyle='#f2c447';cx.fillText(tt,VW/2,78);if(sn){cx.font='bold 16px "Courier New",monospace';cx.fillStyle='#e8e0d0';cx.fillText(`> ${NODE[sn.t].n.toUpperCase()} <  (click again or Enter)`,VW/2,VH-40)}}
+ cx.textAlign='left';if(MC.legend){cx.font='bold 13px "Courier New",monospace';const lx=VW-178,ly0=T?60:60;cx.fillStyle='rgba(10,6,16,.8)';cx.fillRect(lx-8,ly0-6,176,7*30+8);let ly=ly0;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(SP[NODE[t].s],lx,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),lx+30,ly+17);ly+=30}}
+ mapUIVis()};
+// --- DOM controls ---
+function mapUI(){let u=$('mapui');if(u)return u;u=document.createElement('div');u.id='mapui';u.style.cssText='position:fixed;left:calc(10px + env(safe-area-inset-left));bottom:calc(10px + env(safe-area-inset-bottom));z-index:16;display:none;gap:8px';
+ const mk=(t,ti,f)=>{const b=document.createElement('div');b.innerHTML=t;b.title=ti;b.className='mbtn';b.style.cssText='width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:#1e1a34e6;border:3px solid #c9a24a;box-shadow:0 0 0 2px #120c18;cursor:pointer;font-size:18px;color:#ffd24a;touch-action:none;user-select:none';b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();sfx('click');f()});u.appendChild(b);return b};
+ mk('<span style="font-size:11px">CTR</span>','Recenter',mapRecenter);mk('+','Zoom in',()=>mapZoom(1.25,VW/2,VH/2));mk('&minus;','Zoom out',()=>mapZoom(.8,VW/2,VH/2));mk('?','Legend',()=>MC.legend=!MC.legend);MC.statsBtn=mk('&#9776;','Stats',()=>{MC.stats=!MC.stats;hud()});
+ document.body.appendChild(u);return u}
+function mapUIVis(){const u=mapUI(),on=mode=='map'&&!isModal();u.style.display=on?'flex':'none';MC.statsBtn.style.display=TC.on?'flex':'none';
+ if(TC.on){const h=$('hud');if(h)h.style.display=on&&!MC.stats?'none':(P&&mode!='title'&&mode!='hub'?'block':'none');const lg=$('log');if(lg&&on){lg.style.pointerEvents='none';const age=performance.now()-(MC.logT||0);lg.style.opacity=age<3500?'.85':String(Math.max(0,.85-(age-3500)/800));lg.style.top='60px';lg.style.bottom='auto';lg.style.left='calc(50% - 160px)';lg.style.right='auto';lg.style.height='70px';lg.style.width='320px';lg.style.transformOrigin='top center'}
+  const pb=$('pbtn');if(pb)pb.style.display='none'}}
+function mapZoom(f,sx,sy){const wx=MC.x+(sx-VW/2)/MC.z,wy=MC.y+(sy-VH/2)/MC.z;MC.z=mzClamp(MC.z*f);MC.x=wx-(sx-VW/2)/MC.z;MC.y=wy-(sy-VH/2)/MC.z;mapClampCam()}
+function mapTap(x,y){const av=avail();let best=null,bd=1e9;for(const[n,nx,ny,ss]of nodeXY){const d=Math.max(Math.abs(x-nx),Math.abs(y-ny));if(d<ss/2+(TC.on?22:10)&&d<bd&&av.includes(n)){best=n;bd=d}}
+ if(!best)return;const i=av.indexOf(best);if(i==sel&&MC.selTapped){chooseNode(best);MC.selTapped=0}else{sel=i;MC.selTapped=1;sfx('click')}}
+const MP=new Map();
+cv.addEventListener('pointerdown',e=>{if(mode!='map'||isModal())return;e.preventDefault();firstTap&&firstTap();cv.setPointerCapture(e.pointerId);MP.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now()});MC.vx=MC.vy=0;if(MP.size==2){const[a,b]=[...MP.values()];MC.pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:MC.z};MC.drag=1}});
+cv.addEventListener('pointermove',e=>{const p=MP.get(e.pointerId);if(!p||mode!='map')return;e.preventDefault();const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+ if(MP.size>=2&&MC.pinch){const[a,b]=[...MP.values()],d=Math.hypot(a.x-b.x,a.y-b.y),cxm=(a.x+b.x)/2,cym=(a.y+b.y)/2;mapZoom(MC.pinch.z*d/MC.pinch.d/MC.z,cxm,cym);MC.x-=dx/2/MC.z;MC.y-=dy/2/MC.z;mapClampCam();return}
+ if(!MC.drag&&Math.hypot(e.clientX-p.x0,e.clientY-p.y0)>9)MC.drag=1;if(MC.drag){MC.x-=dx/MC.z;MC.y-=dy/MC.z;MC.vx=dx;MC.vy=dy;mapClampCam()}});
+const mpEnd=e=>{const p=MP.get(e.pointerId);if(!p)return;MP.delete(e.pointerId);if(MP.size<2)MC.pinch=null;if(!MC.drag&&mode=='map'&&!isModal()&&performance.now()-p.t<600)mapTap(e.clientX,e.clientY);if(!MP.size){MC.drag=0;if(TC.on===0||1){}}};
+cv.addEventListener('pointerup',mpEnd);cv.addEventListener('pointercancel',e=>{MP.delete(e.pointerId);if(!MP.size){MC.drag=0;MC.pinch=null}});
+cv.addEventListener('wheel',e=>{if(mode!='map'||isModal())return;e.preventDefault();mapZoom(e.deltaY<0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
+{const _lg=log;log=function(){MC.logT=performance.now();return _lg.apply(this,arguments)}}
+addEventListener('resize',()=>{if(MAP)mapClampCam()});
+
+applyTouch();MC.legend=!TC.on;
 cv.addEventListener('mousedown',e=>{if(mode=='cutscene'){e.stopImmediatePropagation();cutNext()}},true);
 MAP=genMap();act=1;title();requestAnimationFrame(loop);
 </script></body></html>
