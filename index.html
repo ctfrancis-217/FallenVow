@@ -2599,4 +2599,139 @@ const GFX=(function(){
  const _st=settings;settings=function(tab,back){const r=_st.apply(this,arguments);if((tab||'controls')=='display'){try{const bx=document.getElementById('box'),bs=[...bx.querySelectorAll('button')],bk=bs[bs.length-1];const b=document.createElement('button');const lab={high:'High',low:'Low',off:'Off (classic canvas)'};b.textContent='Graphics quality: '+lab[GFX.q]+(GFX.gl?'':' - WebGL unavailable');b.onclick=()=>{if(!GFX.gl)return;const o=['high','low','off'];GFX.set(o[(o.indexOf(GFX.q)+1)%3]);settings('display')};if(bk)bk.parentNode.insertBefore(b,bk);else bx.appendChild(b)}catch(e){}}return r}}
 GFX.init();
 
+// ---------- v43: ACT-THEMED ENVIRONMENTAL TRAPS ----------
+// Combat rooms only (not start/treasure/fairy/puzzle/boss, not Demon Lord floor).
+// Act 1: lava jets from pre-placed wall vents. Act 2: haunt ghosts that appear, lunge, vanish.
+// Act 3: telegraphed fireballs aimed at the player. Damage 1, generous telegraph, stops when cleared.
+const TRAP=(function(){
+ const TOUCH=()=>(typeof TC!='undefined'&&TC&&TC.on)||('ontouchstart' in window);
+ const teM=()=>TOUCH()?1.2:1;
+ const themeOf=()=>{const f=window.__TRAPFORCE;if(f==1||f==2||f==3)return f;return Math.max(1,Math.min(3,act||1))};
+ const can=()=>L&&P&&F&&F.cur&&F.cur.kind=='normal'&&F.kind!='D'&&mode=='combat';
+ const live=()=>can()&&L.tr&&L.tr.on&&!L.cleared;
+ const box=(x,y,w,h)=>({x,y,w,h});
+ function trapHurt(d,x,name){if(!P)return;const hp=P.hp,inv=P.inv,had=L.haz;if(!L.haz||!L.haz.length)L.haz=[{k:'trap'}];hurt(d,x);if(!had||!had.length)L.haz=had||[];if(P.hp<hp||(inv<=0&&P.inv>0))P.lastBy=name}
+ function nextCd(th){const p=(typeof RX!='undefined'&&RX.prog)?RX.prog():Math.max(0,(act||1)-1);
+  const base=th==1?210:th==2?250:190,jit=th==1?70:th==2?80:60,fast=Math.min(50,p*16);
+  return Math.max(90,Math.round((base+R(jit)-fast)* (TOUCH()?1.2:1)))}
+ function openLen(x,y,dir,max){let n=0;for(let i=0;i<max;i+=4){const tx=Math.floor((x+(dir>0?i:-i-1))/8),ty=Math.floor((y+5)/8);if(solid(tx,ty))break;n+=4}return Math.max(24,Math.min(max,n))}
+ function placeVents(){const spots=[],h=L.h,w=L.w,D=F.cur.doors||{};
+  for(let ty=3;ty<h-4;ty++){
+   const doorY=ty>=h-5&&ty<=h-3;
+   if(!(doorY&&D.l)&&solid(0,ty)&&!solid(2,ty)&&!solid(3,ty)&&!solid(2,ty-1))spots.push({x:8,y:ty*8,w:6,h:10,dir:1,ty});
+   if(!(doorY&&D.r)&&solid(w-1,ty)&&!solid(w-3,ty)&&!solid(w-4,ty)&&!solid(w-3,ty-1))spots.push({x:w*8-14,y:ty*8,w:6,h:10,dir:-1,ty})}
+  if(!spots.length){const ys=[h-8,h-12,h-16].filter(y=>y>3);for(const ty of ys){spots.push({x:8,y:ty*8,w:6,h:10,dir:1,ty});spots.push({x:w*8-14,y:ty*8,w:6,h:10,dir:-1,ty})}}
+  const Lft=spots.filter(s=>s.dir>0),Rgt=spots.filter(s=>s.dir<0),pick=arr=>{if(!arr.length)return[];arr=[...arr].sort((a,b)=>a.ty-b.ty);const n=Math.min(arr.length,2+R(2));if(n>=arr.length)return arr;const out=[];for(let i=0;i<n;i++)out.push(arr[Math.round(i*(arr.length-1)/Math.max(1,n-1))]);return [...new Set(out)]};
+  L.tr.vents=pick(Lft).concat(pick(Rgt))}
+ function init(r){const on=!!(r&&r.kind=='normal'&&F&&F.kind!='D');const th=themeOf();
+  L.tr={on,th,cd:on?70+R(55):99999,items:[],vents:[],told:0};
+  if(on&&th==1)placeVents();
+  if(on&&!L.tr.told){L.tr.told=1;log(th==1?'Lava vents along the walls hiss and spit.':th==2?'A chill passes. Something unseen watches this hall.':'The air shimmers with drifting embers.',th==1?'#ff8a2a':th==2?'#8affe0':'#ffb02a')}}
+ function fireLava(opts){opts=opts||{};if(!L||!L.tr)return null;const vents=L.tr.vents||[];
+  let v=opts.vent;if(!v&&vents.length){const near=vents.filter(q=>Math.abs(q.y-P.y)<28);const pool=(Math.random()<.7&&near.length)?near:vents;v=pool[R(pool.length)]}
+  if(!v){const dir=P.x>L.w*4?-1:1;v={x:dir>0?8:L.w*8-14,y:Math.max(16,Math.min((L.h-4)*8,P.y)),w:6,h:10,dir}}
+  const dir=v.dir,max=80+R(20),mouth=dir>0?v.x+v.w:v.x,len=opts.len||openLen(mouth+(dir>0?2:-2),v.y+2,dir,max);
+  const h={k:'lava',x:dir>0?mouth:mouth-len,y:v.y,w:len,h:14,dir,warn:opts.warn!=null?opts.warn:Math.round(56*teM()),life:opts.life!=null?opts.life:36,did:0,vent:v};
+  L.tr.items.push(h);return h}
+ function hauntPos(){const tries=[];for(const s of[-1,1])for(const dy of[0,-10,10,-18])tries.push([P.x+s*(38+R(22)),P.y+dy,-s]);
+  tries.push([P.x,P.y-28,P.face||1]);for(const[x,y,face]of tries){if(x>14&&x<L.w*8-22&&y>10&&y<(L.h-3)*8-14&&freeBox(x,y,10,14))return{x,y,face}}
+  return{x:Math.max(16,Math.min(L.w*8-24,P.x+(P.face<0?40:-40))),y:Math.max(12,P.y-8),face:-(P.face||1)}}
+ function spawnHaunt(opts){opts=opts||{};if(!L||!L.tr)return null;const p=opts.x!=null?opts:{...hauntPos(),...opts};
+  const h={k:'haunt',x:p.x,y:p.y,w:10,h:14,face:p.face||1,ph:opts.ph||'in',t:opts.t||0,wind:opts.wind||Math.round(44*teM()),atk:opts.atk||24,out:opts.out||22,life:1,al:opts.al!=null?opts.al:(opts.ph=='atk'?0.95:0),did:0,vx:opts.vx||0,vy:opts.vy||0};
+  if(h.ph=='atk'&&!h.vx&&P){const a=Math.atan2((P.y+P.h/2)-(h.y+7),(P.x+P.w/2)-(h.x+5));h.vx=Math.cos(a)*2.7;h.vy=Math.sin(a)*2.7;h.face=h.vx<0?-1:1}
+  L.tr.items.push(h);if(h.ph=='in'&&h.t==0){sfx('spell');burst(h.x+5,h.y+7,'#8affe0',10)}return h}
+ function emberPos(){const c=[];const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  c.push({x:clamp(P.x+(R(2)?1:-1)*(40+R(50)),16,L.w*8-24),y:14+R(16)});
+  c.push({x:16,y:clamp(P.y+(R(28)-14),16,(L.h-4)*8)});
+  c.push({x:L.w*8-22,y:clamp(P.y+(R(28)-14),16,(L.h-4)*8)});
+  const ok=c.filter(q=>Math.hypot(q.x-P.x,q.y-P.y)>72&&freeBox(q.x,q.y,8,8));
+  return (ok.length?ok:c)[R((ok.length?ok:c).length)]}
+ function fitBox(x,y,w,h){x=Math.max(12,Math.min(L.w*8-12-w,x));y=Math.max(12,Math.min((L.h-3)*8-h,y));
+  if(freeBox(x,y,w,h))return{x,y};for(const[dx,dy]of[[0,8],[0,16],[0,24],[0,-8],[12,8],[-12,8],[24,0],[-24,0],[16,16],[-16,16]]){const nx=Math.max(12,Math.min(L.w*8-12-w,x+dx)),ny=Math.max(12,Math.min((L.h-3)*8-h,y+dy));if(freeBox(nx,ny,w,h))return{x:nx,y:ny}}return{x,y}}
+ function spawnEmber(opts){opts=opts||{};if(!L||!L.tr)return null;const raw=opts.x!=null?opts:emberPos();const p=fitBox(raw.x,raw.y,8,8);
+  const h={k:'ember',x:p.x,y:p.y,w:8,h:8,warn:opts.warn!=null?opts.warn:Math.round(50*teM()),life:2,fired:0};
+  L.tr.items.push(h);return h}
+ function launchBall(h){const sp=1.65*(TOUCH()?.85:1),a=Math.atan2((P.y+P.h/2)-(h.y+4),(P.x+P.w/2)-(h.x+4));
+  eShot({x:h.x,y:h.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,s:'fireball',w:7,h:7,life:210,dmg:1,ghost:0,trap:1,c:'#ff8a2a'});
+  sfx('spell');burst(h.x+4,h.y+4,'#ff8a2a',12);h.fired=1;h.life=0}
+ function pickSpawn(){const th=L.tr.th,p=(typeof RX!='undefined'&&RX.prog)?RX.prog():0,its=L.tr.items;
+  if(th==1){const n=its.filter(h=>h.k=='lava').length;if(n>=(p>=1.2?2:1))return;fireLava()}
+  else if(th==2){if(its.some(h=>h.k=='haunt'))return;spawnHaunt()}
+  else{const n=its.filter(h=>h.k=='ember').length;if(n>=(p>=2.5?2:1))return;spawnEmber()}}
+ function stepHaunt(h){h.t++;
+  if(h.ph=='in'){h.al=Math.min(.9,h.t/h.wind);h.y+=Math.sin((tick+h.t)/7)*.15;if(tick%4==0)L.parts.push({x:h.x+3+R(5),y:h.y+12,vx:(Math.random()-.5)*.3,vy:-.4,life:16,c:'#8affe0'});
+   if(h.t>=h.wind){h.ph='atk';h.t=0;const a=Math.atan2((P.y+P.h/2)-(h.y+h.h/2),(P.x+P.w/2)-(h.x+h.w/2));h.vx=Math.cos(a)*2.7;h.vy=Math.sin(a)*2.7;h.face=h.vx<0?-1:1;sfx('slash')}}
+  else if(h.ph=='atk'){h.x+=h.vx;h.y+=h.vy;h.al=.95;if(tick%2==0)L.parts.push({x:h.x+5,y:h.y+7,vx:-h.vx*.2,vy:-h.vy*.2,life:12,c:'#c8fff4'});
+   if(!h.did&&ov(P,h)){h.did=1;trapHurt(1,h.x+h.w/2,'a haunt');burst(P.x+3,P.y+4,'#8affe0',8)}
+   if(h.t>=h.atk){h.ph='out';h.t=0}}
+  else{h.al=Math.max(0,1-h.t/h.out);h.x+=h.vx*.25;h.y+=h.vy*.25;if(h.t>=h.out)h.life=0}
+  // slash dissipates (not a real enemy — no XP/loot)
+  if(h.life>0&&h.ph!='out'&&P.atkT>0){const sb=swordBox();if(sb&&ov(sb,h)){h.ph='out';h.t=Math.max(h.t,Math.floor(h.out*.55));burst(h.x+5,h.y+7,'#e8fff8',14);sfx('kill')}}
+  h.x=Math.max(8,Math.min(L.w*8-h.w-8,h.x));h.y=Math.max(8,Math.min((L.h-2)*8-h.h,h.y))}
+ function stepLava(h){if(h.warn>0){h.warn--;if(h.warn==0){sfx('break');shake=Math.max(shake,5);burst((h.dir>0?h.x:h.x+h.w),h.y+5,'#ff8a2a',16);if(h.vent)burst(h.vent.x+3,h.vent.y+5,'#ffd24a',8)}
+   if(h.warn>0&&h.warn%6==0)L.parts.push({x:(h.dir>0?h.x:h.x+h.w)+R(3),y:h.y+2+R(6),vx:h.dir*(.4+Math.random()),vy:-.5-Math.random(),life:18,c:'#ff8a2a'});return}
+  h.life--;if(tick%2==0)L.parts.push({x:h.x+R(h.w),y:h.y+R(h.h),vx:h.dir*.4,vy:.4,life:14,c:tick%4?'#ffd24a':'#ff6a1a'});
+  if(!h.did&&ov(P,h)){h.did=1;trapHurt(1,h.x+h.w/2,'a lava jet')}}
+ function stepEmber(h){if(h.warn>0){h.warn--;if(h.warn%5==0)L.parts.push({x:h.x+2+R(4),y:h.y+R(4),vx:(Math.random()-.5),vy:-.6,life:16,c:'#ffb02a'});
+   if(h.warn==0&&P)launchBall(h)}else if(!h.fired)launchBall(h)}
+ function step(){if(!L||!L.tr||!P||mode!='combat'){if(L)L.xl=(L.xl||[]).filter(q=>!q._tr);return}
+  const T=L.tr;
+  if(L.cleared){for(const h of T.items){if(h.k=='haunt'&&h.ph!='out'){h.ph='out';h.t=0}if(h.k=='ember')h.life=0;if(h.k=='lava'&&h.warn>0)h.life=0}}
+  else if(T.on&&can()){T.cd--;if(T.cd<=0){pickSpawn();T.cd=nextCd(T.th)}}
+  for(const h of T.items){if(h.k=='lava')stepLava(h);else if(h.k=='haunt')stepHaunt(h);else if(h.k=='ember')stepEmber(h)}
+  T.items=T.items.filter(h=>h.life>0);
+  const lights=[];
+  for(const v of T.vents||[])lights.push({x:v.x+3,y:v.y+5,r:18,i:.35,c:'#ff6a1a',_tr:1});
+  for(const h of T.items){
+   if(h.k=='lava'){const on=h.warn<=0;lights.push({x:h.x+h.w/2,y:h.y+5,r:on?52:28,i:on?1.3:.7,c:'#ff8a2a',_tr:1});lights.push({x:h.dir>0?h.x:h.x+h.w,y:h.y+5,r:22,i:1.1,c:'#ffd24a',_tr:1})}
+   if(h.k=='haunt')lights.push({x:h.x+5,y:h.y+7,r:26,i:.5+h.al*.7,c:'#6affd0',_tr:1});
+   if(h.k=='ember')lights.push({x:h.x+4,y:h.y+4,r:30,i:1.1,c:'#ffb02a',_tr:1})}
+  L.xl=(L.xl||[]).filter(q=>!q._tr).concat(lights)}
+ function drawVents(X,Y,glow){for(const v of (L.tr&&L.tr.vents)||[]){const fl=1+Math.sin(tick/5+v.y)*.18;
+  cx.save();cx.globalCompositeOperation='lighter';glow(X(v.x+3),Y(v.y+6),14*Z*fl,'rgba(255,90,30,.55)');cx.restore();
+  cx.fillStyle='#1a0604';cx.fillRect(X(v.x-1),Y(v.y-1),(v.w+2)*Z,(v.h+2)*Z);
+  cx.fillStyle='#6a2010';cx.fillRect(X(v.x),Y(v.y),v.w*Z,v.h*Z);
+  cx.fillStyle='#c84818';cx.fillRect(X(v.x+1),Y(v.y+1),(v.w-2)*Z,(v.h-2)*Z);
+  for(let i=0;i<3;i++){cx.fillStyle='#2a0a06';cx.fillRect(X(v.x+1),Y(v.y+2+i*3),(v.w-2)*Z,Z)}
+  cx.fillStyle=tick%16<8?'#ffd24a':'#ff8a2a';cx.fillRect(X(v.x+(v.dir>0?v.w-1:-1)),Y(v.y+3+((tick/3)|0)%5),2*Z,2*Z)}}
+ function drawLava(h,X,Y,glow){const dir=h.dir,mouth=dir>0?h.x:h.x+h.w;
+  if(h.warn>0){const a=.45+.4*Math.sin(tick/3);
+   cx.save();cx.globalCompositeOperation='lighter';glow(X(mouth),Y(h.y+7),20*Z,`rgba(255,110,30,${.55+a*.4})`);cx.restore();
+   cx.fillStyle=`rgba(255,70,20,${.35+a*.35})`;cx.fillRect(X(h.x),Y(h.y+3),h.w*Z,(h.h-6)*Z);
+   for(let i=0;i<h.w;i+=7)if(((i/7+(tick/4|0))&1)==0){cx.fillStyle='#ffb02a';cx.fillRect(X(h.x+i),Y(h.y+4),5*Z,(h.h-8)*Z)}
+   cx.fillStyle='#ffd24a';cx.fillRect(X(mouth-2),Y(h.y-1),5*Z,(h.h+2)*Z);
+   if(tick%8<6){cx.font=`bold ${7*Z}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#ffd24a';cx.fillText('!',X(mouth),Y(h.y-6));cx.textAlign='left'}}
+  else{cx.save();cx.globalCompositeOperation='lighter';glow(X(h.x+h.w/2),Y(h.y+7),22*Z,'rgba(255,90,20,.45)');glow(X(mouth),Y(h.y+7),18*Z,'rgba(255,180,50,.65)');cx.restore();
+   for(let i=0;i<h.w;i+=2){const wave=Math.sin(i*.3+tick*.65)*2.4,drip=Math.max(0,Math.sin(i*.18+tick*.35))*4,t=(i+tick*3)%14;
+    const col=t<3?'#ffe27a':t<7?'#ff9a2a':t<11?'#e84810':'#c02808';
+    cx.fillStyle=col;cx.fillRect(X(h.x+i),Y(h.y+1+wave*.3),3*Z,(h.h-2+drip)*Z)}
+   cx.fillStyle='#ffe9a0';cx.fillRect(X(h.x+3),Y(h.y+h.h/2-1.4),(h.w-6)*Z,2.4*Z);
+   cx.fillStyle='#fff6d0';cx.fillRect(X(h.x+6),Y(h.y+h.h/2-0.6),(h.w-12)*Z,1.2*Z)}}
+ function drawHaunt(h,X,Y,glow){const cx0=h.x+h.w/2,cy0=h.y+h.h/2,al=Math.max(0,h.al);if(al<=.02)return;
+  cx.save();cx.globalAlpha=al;const st=h.ph=='atk'?1.3:1.15;
+  cx.save();cx.globalCompositeOperation='lighter';glow(X(cx0),Y(cy0),(18+st*5)*Z,`rgba(110,255,220,${.4*al})`);cx.restore();
+  cx.translate(X(cx0),Y(cy0));if(h.face<0)cx.scale(-1,1);cx.scale(st,st);cx.translate(-X(cx0),-Y(cy0));
+  const Rct=(x,y,w,hgt,c)=>{cx.fillStyle=c;cx.fillRect(X(x),Y(y),Math.max(1,w*Z),Math.max(1,hgt*Z))};
+  Rct(h.x,h.y+1,10,12,'#163834');Rct(h.x+1,h.y,8,14,'#2a6a62');Rct(h.x+2,h.y-1,6,4,'#3e8a80');
+  Rct(h.x+1,h.y+13,3,4,'#2a6a62');Rct(h.x+6,h.y+13,3,5,'#2a6a62');Rct(h.x+4,h.y+13,2,3,'#163834');
+  Rct(h.x+2.4,h.y+3.2,2.2,2.8,'#051010');Rct(h.x+6,h.y+3.2,2.2,2.8,'#051010');
+  Rct(h.x+2.8,h.y+3.6,1.4,1.6,'#b8fff4');Rct(h.x+6.4,h.y+3.6,1.4,1.6,'#b8fff4');
+  if(h.ph=='atk'){cx.globalCompositeOperation='lighter';for(let i=0;i<7;i++)Rct(h.x+9+i*1.6,h.y+5+Math.sin(i+tick)*1.4,1.4,1.4,i<3?'#ffffff':'#8affe0');cx.globalCompositeOperation='source-over'}
+  cx.restore();
+  if(h.ph=='in'&&tick%8<6){cx.font=`bold ${7*Z}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#e8fff8';cx.fillText('!',X(cx0),Y(h.y-8));cx.textAlign='left'}}
+ function drawEmber(h,X,Y,glow){const a=.5+.35*Math.sin(tick/3);
+  cx.save();cx.globalCompositeOperation='lighter';glow(X(h.x+4),Y(h.y+4),(14+a*10)*Z,`rgba(255,130,30,${.7+a*.25})`);cx.restore();
+  cx.fillStyle='#c83010';cx.beginPath();cx.ellipse(X(h.x+4),Y(h.y+4),(5+a)*Z,(5.5+a)*Z,0,0,7);cx.fill();
+  cx.fillStyle=tick%4<2?'#ff8a2a':'#ffd24a';cx.beginPath();cx.ellipse(X(h.x+4),Y(h.y+4),(3.4+a*.6)*Z,(3.8+a*.6)*Z,0,0,7);cx.fill();
+  cx.fillStyle='#fff6c0';cx.beginPath();cx.ellipse(X(h.x+3.2),Y(h.y+2.6),1.8*Z,2*Z,0,0,7);cx.fill();
+  if(P){cx.save();cx.globalAlpha=.55+.2*Math.sin(tick/2);cx.strokeStyle='#ffb02a';cx.lineWidth=Math.max(1.5,Z);cx.setLineDash([4*Z,3*Z]);cx.beginPath();cx.moveTo(X(h.x+4),Y(h.y+4));cx.lineTo(X(P.x+P.w/2),Y(P.y+P.h/2));cx.stroke();cx.setLineDash([]);cx.restore()}
+  if(tick%8<6){cx.font=`bold ${7*Z}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#ffd24a';cx.fillText('!',X(h.x+4),Y(h.y-8));cx.textAlign='left'}}
+ function draw(X,Y,glow){if(!L||!L.tr)return;drawVents(X,Y,glow);
+  for(const h of L.tr.items){if(h.k=='lava')drawLava(h,X,Y,glow);if(h.k=='ember')drawEmber(h,X,Y,glow)}
+  for(const h of L.tr.items)if(h.k=='haunt')drawHaunt(h,X,Y,glow)}
+ const _er=enterRoom;enterRoom=function(r,side){const fresh=!r.L;const out=_er.apply(this,arguments);try{if(fresh&&L)init(r)}catch(err){console.error(err)}return out};
+ const _up=update;update=function(){const r=_up.apply(this,arguments);try{if(mode=='combat'&&L&&P)step()}catch(err){console.error(err)}return r};
+ const _dh=drawHaz;drawHaz=function(X,Y,glow){const r=_dh.apply(this,arguments);try{draw(X,Y,glow)}catch(err){console.error(err)}return r};
+ return{init,step,draw,fireLava,spawnHaunt,spawnEmber,launchBall,can,live,themeOf,nextCd}})();
+
 </script></body></html>
