@@ -1518,7 +1518,7 @@ EVENTS.push(
  ()=>modal('Dread Hunt','Something vast stalks these halls, wreathed in black fire. Its trophies would be... special.',[{t:'Hunt it (Dread elite fight, cursed reward)',p:1,f:()=>{window.FORCEDREAD=1;closeModal();startCombat('M')}},{t:'Avoid it',f:closeModal}]));
 // --- Dread rare variants ---
 {const _rh=rollHeirs;rollHeirs=function(){const H=_rh();for(const h of H){if(h.traits.includes('giant')&&h.traits.includes('dwarf'))h.traits=h.traits.filter(t=>t!='dwarf');if(h.traits.includes('fleet')&&h.traits.includes('glassb'))h.traits=h.traits.filter(t=>t!='fleet')}return H}}
-function makeDread(e){e.dread=1;e.hp=e.mhp=Math.round(e.mhp*2.6)+6;e.n='Dread '+e.n.replace('Elite ','');e.xp*=3;e.dmg=(e.dmg||1);log(`A ${e.n} emerges, wreathed in black fire!`,'#ff3a6a');L.banner={t:140,s:'A DREAD FOE APPROACHES',c:'#ff3a6a'};sfx('roar')}
+function makeDread(e){e.dread=1;e.hp=e.mhp=Math.round(e.mhp*(e.elite?1.7:2.6))+6;e.n='Dread '+e.n.replace('Elite ','');e.xp*=3;e.dmg=(e.dmg||1);log(`A ${e.n} emerges, wreathed in black fire!`,'#ff3a6a');L.banner={t:140,s:'A DREAD FOE APPROACHES',c:'#ff3a6a'};sfx('roar')}
 {const _er=enterRoom;enterRoom=function(r,side){const fresh=!r.L;_er.apply(this,arguments);if(!fresh||!L)return;if(has('hunger')&&P.gold>0){P.gold=Math.max(0,P.gold-3)}
  const pool=L.mobs.filter(e=>!e.boss);if(!pool.length)return;const ch=window.FORCEDREAD?1:r.kind=='boss'&&F.kind=='E'?.2:.07;if(Math.random()<ch){window.FORCEDREAD=0;makeDread(pool.find(e=>e.elite)||pool[R(pool.length)])}}}
 {const _u=upE;upE=function(e){_u(e);if(e.dread&&!e.dead&&e.hp>0&&!e.boss){const k=e.t%160;if(k==120)e.fl=tick;if(k==150){for(let i=0;i<8;i++){const a=i/8*Math.PI*2+e.t;eShot({x:e.x+e.w/2,y:e.y+e.h/2,vx:Math.cos(a)*1.5,vy:Math.sin(a)*1.5,s:'orb'})}sfx('spell');burst(e.x+e.w/2,e.y+e.h/2,'#ff3a6a',12)}if(tick%4==0)L.parts.push({x:e.x+Math.random()*e.w,y:e.y+e.h,vx:0,vy:-.5,life:20,c:'#ff3a6a'})}}}
@@ -2020,6 +2020,12 @@ const EANIM=(function(){
   cx.restore();cx.globalCompositeOperation='source-over'}
  return{begin,end,phase}})();
 
+
+// ---------- HP PASS v38: tougher elites (room bosses) and act bosses; regular enemies unchanged ----------
+{const ELT=[0,85,125,180,250],BHM={gking:2.6,lich:2.25,dking:1.75,demon:1.15};const _sp=spawn;spawn=function(key,tx,s,elite){const e=_sp.apply(this,arguments);
+ if(e.boss&&BHM[key]){e.hp=e.mhp=Math.round(e.mhp*BHM[key])}
+ else if(elite&&!e.boss){const ai=F&&F.kind=='D'?4:Math.max(1,Math.min(3,act||1));e.hp=e.mhp=Math.round(Math.max(e.mhp*1.5,ELT[ai]*(has('gcrown')?1.2:1)))}
+ return e}}
 // ---------- ART PASS 3: HD pixel upscale (Scale2x) + selective outline + rim light + breathing frames ----------
 function hdify(src){if(!src||src.hd)return src;const W=src.width,H=src.height,g0=src.getContext('2d'),sd=g0.getImageData(0,0,W,H).data,S=new Uint32Array(sd.buffer.slice(0));
  const W2=W*2,H2=H*2,O=new Uint32Array(W2*H2),at=(x,y)=>S[Math.max(0,Math.min(H-1,y))*W+Math.max(0,Math.min(W-1,x))];
