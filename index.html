@@ -17,6 +17,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 #box{max-height:94vh;overflow-y:auto;background:#161630;border:4px solid #c9a24a;box-shadow:0 0 0 4px #000,0 0 40px #000;padding:20px 24px;width:min(480px,92vw);font-size:14px;line-height:1.5;text-shadow:2px 2px 0 #000}
 #box h2{margin:0 0 10px;color:#ffd24a;font-size:24px;text-shadow:3px 3px 0 #5a3a10,0 0 12px #ffb02a88}
 #box button{display:block;width:100%;margin:6px 0;padding:8px;background:#2a2030;border:3px solid #5a4630;cursor:pointer;text-align:left;font-size:13px}
+#box input[type=range]{height:32px;touch-action:pan-x}
 #box button:hover:not(:disabled){background:#3d2e48;border-color:#f2c447}#box button:disabled{opacity:.4;cursor:default}
 </style><style id="art4css">.panel{background:linear-gradient(180deg,#1c1a36f0,#100e22f0)!important;border-image:none;box-shadow:0 0 0 3px #120c18,inset 0 0 0 2px #5a4020,inset 0 2px 0 3px #ffe27a22,0 6px 0 3px #00000066!important}
 .panel::before,.panel::after{content:'';position:absolute;width:6px;height:6px;background:#ffe27a;box-shadow:0 0 0 2px #7a5418;top:-5px;left:-5px;pointer-events:none}.panel::after{left:auto;right:-5px}
@@ -188,6 +189,8 @@ function rollHeirs(){return[0,1,2].map(()=>{const pool=TRAITS.slice(),tr=[];for(
 // ---------- state ----------
 let mode='title',P,run,act,MAP,pos,sel=0,L,F,logs=[],nodeXY=[],tick=0,shake=0,hitstop=0;
 const hasT=id=>P&&P.traits&&P.traits.includes(id);
+function applyBright(mono){let b=meta.bright==null?1:+meta.bright;if(!(b>=.5&&b<=1.5))b=1;const bits=[];if(Math.abs(b-1)>.004)bits.push('brightness('+b+')');if(mono)bits.push('grayscale(1)');const f=bits.join(' ');cv.style.filter=f;const gc=$('glc');if(gc)gc.style.filter=f}
+function setBright(v){let n=Math.round(+v);if(!(n>=50&&n<=150))n=100;meta.bright=n/100;const e=$('v_bright');if(e)e.textContent=n;applyBright(hasT('mono')&&(mode=='combat'||mode=='map'||mode=='hub'||mode=='cutscene'));saveMeta()}
 function log(m,c='#e8e0d0'){logs.unshift([m,c]);logs=logs.slice(0,9);hud()}
 const CUPS=[{id:'hp',n:'Iron Constitution',d:'+1 max Heart',max:5,b:15},{id:'atk',n:'Tempered Blade',d:'+1 attack',max:5,b:20},{id:'mp',n:'Deep Reserves',d:'+3 max mana',max:5,b:12},
 {id:'dash',n:'Shadow Step',d:'-8% dash cooldown',max:4,b:15},{id:'aeg',n:'Unbroken Aegis',d:'+0.2s Dark Aegis duration',max:4,b:18},{id:'spp',n:'Hexcraft',d:'+2 spell damage',max:5,b:15},{id:'crit',n:'Executioner',d:'+5% critical hit chance (x2 damage)',max:5,b:20}];
@@ -203,7 +206,7 @@ function newRun(h){HUBON=0;const ch=CHARS.find(c=>c.id==h.ch);
  if(hasT('giant')){P.w=8;P.h=11;P.ds=1.35;P.mhp+=2}if(hasT('dwarf')){P.w=4;P.h=6;P.ds=.7;P.mhp-=1}if(hasT('glass')){P.a+=3;P.mhp-=2}if(hasT('fleet'))P.spd=1.9;if(hasT('weak'))P.a-=1;if(hasT('arcane'))P.mmp+=5;
  P.mhp=Math.max(2,P.mhp);P.hp=P.mhp;P.mp=P.mmp;
  run={kills:0,floors:0,rooms:0,time:0,goldMul:1+ML('gold')*.1+h.traits.reduce((a,t)=>a+TB[t].g,0)};
- cv.style.filter=hasT('mono')?'grayscale(1)':'';logs=[];act=1;closeModal();startAct();gainRelic(ch.relic);log(`${h.name} storms the Demon Lord’s castle. Carry the Vow!`,'#f2c447')}
+ applyBright(hasT('mono'));logs=[];act=1;closeModal();startAct();gainRelic(ch.relic);log(`${h.name} storms the Demon Lord’s castle. Carry the Vow!`,'#f2c447')}
 function startAct(){MAP=genMap();pos=null;sel=0;mode='map';log(`Act ${act}: ${ACTN[act-1]}`,'#f2c447')}
 
 // ---------- branching map ----------
@@ -805,7 +808,7 @@ function modal(t,body,btns,wide){$('box').classList.remove('heirc');if(mode!='co
 function closeModal(){$('ov').style.display='none';modalBtns=[];if(mode=='modal'||mode=='title')mode=P&&MAP?'map':mode;hud()}
 const isModal=()=>$('ov').style.display=='flex';
 // ---------- title / manor / heirs / charon ----------
-function title(){mode='title';P=null;cv.style.filter='';modal('Fallen Vow','The fallen Paladin’s cursed bloodline. Each heir storms the Demon Lord’s castle across three acts, choosing their road like a pilgrim, fighting room by room. When one falls, the next takes up the blade.<br><br>'+`Gold in the family vault: <b>${meta.gold}</b> &middot; Generation ${meta.gen} &middot; Wins ${meta.wins||0}`,
+function title(){mode='title';P=null;applyBright(false);modal('Fallen Vow','The fallen Paladin’s cursed bloodline. Each heir storms the Demon Lord’s castle across three acts, choosing their road like a pilgrim, fighting room by room. When one falls, the next takes up the blade.<br><br>'+`Gold in the family vault: <b>${meta.gold}</b> &middot; Generation ${meta.gen} &middot; Wins ${meta.wins||0}`,
  [{t:'Enter the Manor',p:1,f:manor},{t:'Settings',f:()=>settings('controls',title)}])}
 function manor(){mode=HUBON?'modal':'title';P=null;const rows=[0,1,2].map(t=>`<div style="display:flex;gap:8px;margin:6px 0">`+MANOR.filter(m=>m.tier==t).map(m=>{const lv=ML(m.id),mx=lv>=m.max,lock=m.req&&!ML(m.req),c=mx?0:m.c[lv],ok=!mx&&!lock&&meta.gold>=c;
   return`<div onclick="${ok?`buyManor('${m.id}')`:''}" style="flex:1;cursor:${ok?'pointer':'default'};padding:8px;border:3px solid ${mx?'#6fe86f':lock?'#3a3644':ok?'#ffd24a':'#5a4630'};background:${lock?'#0e0e1a':'#1e1a34'};opacity:${lock?.5:1};font-size:12px">
@@ -837,12 +840,12 @@ function settings(tab='controls',back){if(back)settingsBack=back;const tabs=`<di
   [['Mouse Aim',meta.mouseAim?'ON':'OFF','-','When ON, attacks aim toward the cursor (up / down / left / right). Toggle with the button below.'],['Low Sweep','S + LMB (on ground)','Down + X','A low, wide slash along the floor in front of you: hits hellhounds and other low foes and smashes urns. On a plank it attacks instead of dropping.'],['Pogo','S + LMB (in air)','Down + X','Bounce off foes, urns and shots; refreshes dash & double jump.'],['Drop Through','Tap S (on a plank)','Down','Press Down while standing on a wooden plank to drop through it (solid stone is unaffected).'],['Fairy Chest','Clear room unharmed, then E','-','Fairy rooms: defeat every foe without taking a hit and the fairy chest unseals (a rare relic). Get hit once and it seals for good.'],['Map Navigation','A/D + Enter/Space/W, or click','D-Pad (keyboard only for now)','Pick the next connected node on the act map.'],['Menus','Click, 1-9, Enter','-','Enter picks the highlighted choice.'],['Fullscreen','F','-','Toggle fullscreen.']].map(r=>`<tr style="border-top:1px solid #3a3050"><td style="color:#ffd24a;padding:3px 4px">${r[0]}</td><td style="color:#6fc8ff">${r[1]}</td><td style="color:#c890ff">${r[2]}</td><td><small>${r[3]}</small></td><td></td></tr>`).join('')+'</table>'}
  else if(tab=='touch'){body=touchSettings()}
  else if(tab=='audio'){const sl=(k,n)=>`<div style="margin:10px 0">${n}: <b id="v_${k}">${Math.round(meta.audio[k]*100)}</b>%<br><input type="range" min="0" max="100" value="${Math.round(meta.audio[k]*100)}" style="width:100%;accent-color:#ffd24a" oninput="setVol('${k}',this.value)" onchange="sfx('coin')"></div>`;body=sl('master','Master volume')+sl('music','Music')+sl('sfx','Sound effects')+`Muted: <b style="color:${meta.audio.mute?'#ff5a3a':'#6fe86f'}">${meta.audio.mute?'YES':'NO'}</b><br><small>All music and sounds are synthesized live (WebAudio). Settings are saved.</small>`+(AU.ctx?'':'<br><small>Audio starts after your first click or key press.</small>')}
- else body=`Screen shake: <b>${meta.shake===false?'OFF':'ON'}</b><br>Fullscreen: <b>${document.fullscreenElement?'ON':'OFF'}</b>`;
+ else body=`<div style="margin:10px 0">Brightness: <b id="v_bright">${Math.round((meta.bright==null?1:meta.bright)*100)}</b>%<br><input type="range" min="50" max="150" value="${Math.round((meta.bright==null?1:meta.bright)*100)}" style="width:100%;accent-color:#ffd24a" oninput="setBright(this.value)" onchange="sfx('coin')"></div><small>50–150%. Changes the playfield. Menus stay the same. Saved on this device.</small><br><br>Screen shake: <b>${meta.shake===false?'OFF':'ON'}</b><br>Fullscreen: <b>${document.fullscreenElement?'ON':'OFF'}</b>`;
  modal('Settings',tabs+body,tab=='audio'?[{t:meta.audio.mute?'Unmute':'Mute all audio',f:()=>{meta.audio.mute=!meta.audio.mute;saveMeta();applyVol();settings('audio')}},{t:'Test sound',f:()=>{audioInit();sfx('relic')}},{t:'Back',p:1,f:()=>(settingsBack||title)()}]:tab=='controls'?[{t:'Mouse aim: '+(meta.mouseAim?'ON':'OFF'),f:()=>{meta.mouseAim=!meta.mouseAim;saveMeta();settings('controls')}},{t:'Reset default keys',f:()=>{for(const k in KM_DEF)KM[k]=KM_DEF[k].slice();meta.keys=null;saveMeta();settings('controls')}},{t:'Back',p:1,f:()=>{rebind=null;(settingsBack||title)()}}]:
   [{t:'Toggle screen shake',f:()=>{meta.shake=meta.shake===false;saveMeta();settings('display')}},{t:'Toggle fullscreen',f:()=>{toggleFS();setTimeout(()=>settings('display'),300)}},{t:'Back',p:1,f:()=>(settingsBack||title)()}],1)}
 function pauseMenuOld(){modal('Paused',`${P.heir.name} <small style="color:#f2a05a">(${P.traits.map(t=>TB[t].n).join(', ')||'no traits'})</small> &middot; Act ${act} &middot; ${F?F.rooms.filter(r=>r.L&&r.L.cleared).length+'/'+F.rooms.length+' rooms':''}`,[{t:'Resume',p:1,f:closeModal},{t:'Settings',f:()=>settings('controls',pauseMenu)},{t:'Abandon run (counts as death)',f:()=>{closeModal();die()}}])}
 // ---------- end of run ----------
-function endRun(won){bankCoins();clearSave();if(mode=='dead')return;mode='dead';P.dead=1;const earned=has('furnace')?0:P.gold+(won?200:0);if(has('furnace'))log('Soul Furnace: Charon takes all your gold.','#ff5a5a');meta.gold+=earned;meta.best=Math.max(meta.best||0,act);if(won)meta.wins=(meta.wins||0)+1;meta.gen++;meta.heirs=null;saveMeta();cv.style.filter='';
+function endRun(won){bankCoins();clearSave();if(mode=='dead')return;mode='dead';P.dead=1;const earned=has('furnace')?0:P.gold+(won?200:0);if(has('furnace'))log('Soul Furnace: Charon takes all your gold.','#ff5a5a');meta.gold+=earned;meta.best=Math.max(meta.best||0,act);if(won)meta.wins=(meta.wins||0)+1;meta.gen++;meta.heirs=null;saveMeta();applyBright(false);
  const h=P.heir;mode='title';modal(won?'Victory!':'Thou Art Slain',(won?'The Demon Lord is dead. The vow is fulfilled; the blood of the Fallen Paladin is free.<br><br>':'<i style="color:#c890ff">The vow passes to the next of the blood...</i><br><br>')+`<b>${h.name}</b> (${h.traits.map(t=>TB[t].n).join(', ')||'no traits'})<br>Act ${act}, floor ${pos?pos.r+1:0} &middot; Level ${P.lv}<br>Kills ${run.kills} &middot; Rooms cleared ${run.rooms} &middot; Floors ${run.floors} &middot; Time ${Math.round(run.time/60)}s<br>Relics: ${P.relics.length}<br>Gold sent to the family vault: <b style="color:#ffd24a">+${earned}</b>`+almostHTML(earned),
  [{t:'Quick Start (next heir)',p:1,f:quickStart},{t:'Return to Ashenmere',f:manor}])}
 function die(){sfx('death');log('Your tale ends here. The vow passes to the next of the blood...','#f00');endRun(false)}function win(){endRun(true)}
@@ -965,7 +968,7 @@ function loadRun(){const s=peekSave();if(!s)return false;try{
  const nodes=s.map.nodes.map(n=>({...n,next:[]}));s.map.nodes.forEach((n,i)=>nodes[i].next=n.next.map(j=>nodes[j]));const grid=[...Array(s.map.ROWS)].map(()=>Array(s.map.COLS).fill(null));for(const n of nodes)if(n.r<s.map.ROWS)grid[n.r][n.c]=n;
  MAP={nodes:grid,boss:nodes[s.map.boss],ROWS:s.map.ROWS,COLS:s.map.COLS};pos=s.pos==null?null:nodes[s.pos];sel=0;
  P=s.P;P.ch=CHARS.find(c=>c.id==s.chId)||CHARS[0];P.trail=[];P.dead=0;run=s.run;act=s.act;logs=s.logs||[];F=null;L=null;closeModal();
- cv.style.filter=hasT('mono')?'grayscale(1)':'';
+ applyBright(hasT('mono'));
  if(s.ctx=='combat'&&s.floor){const fl=s.floor,rooms=fl.rooms.map(o=>({gx:o.gx,gy:o.gy,kind:o.kind,seen:o.seen,known:o.known,doors:{},L:o.L?{...o.L,mobs:[],shots:[],pshots:[],bolts:[],parts:[],items:[],fx:[],coins:[],hearts:[],cam:0}:null}));
   fl.rooms.forEach((o,i)=>{for(const d in o.doors)rooms[i].doors[d]=rooms[o.doors[d]]});const grid2={};for(const r of rooms)grid2[r.gx+','+r.gy]=r;
   F={kind:fl.kind,rooms,grid:grid2,start:rooms[fl.start],boss:rooms[fl.boss],cur:null};mode='combat';enterRoom(rooms[fl.cur],null)}
@@ -979,7 +982,7 @@ function pauseMenu(){if(!runActive())return;const inModal=isModal()&&mode!='comb
   {t:'Resume',p:1,f:resume},{t:'Settings',f:()=>settings('controls',pauseMenu)},{t:'Relic Index',f:()=>relicIndex('all',pauseMenu)},
   {t:'Save & Quit to Main Menu',f:()=>{mode=back;saveRun('quit');P=null;run=null;F=null;L=null;prevModal=null;mainMenu()}},
   {t:'Abandon Run',f:()=>modal('Abandon Run?','Abandoning ends this heir\u2019s run (counts as a death). Your save will be deleted.',[{t:'No, go back',p:1,f:pauseMenu},{t:'Yes, abandon',f:()=>{prevModal=null;closeModal();mode='combat';if(!F)startFloor('M');die()}}])}]);if(back=='combat')mode='combat'}
-function mainMenu(){mode='title';cv.style.filter='';setMusic('menu');const sv=!runActive()&&peekSave();
+function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!runActive()&&peekSave();
  const sum=sv?`<div style="text-align:center;margin:6px 0;padding:6px;border:3px solid #5a4630;background:#1e1a34"><b style="color:#ffd24a">Saved run:</b> ${sv.P.heir.name} &middot; Act ${sv.act}, Floor ${sv.run.floors||0} &middot; <span style="color:#ff6f8f">&#9829; ${sv.P.hp}/${sv.P.mhp}</span>${sv.ctx=='combat'?' &middot; in a castle':''}</div>`:'';
  const newRun=()=>{if(peekSave())modal('Start a New Run?','This will <b style="color:#ff5a3a">overwrite your saved run</b>. Continue?',[{t:'Cancel',p:1,f:mainMenu},{t:'Yes, start a new run',f:()=>{clearSave();startNew()}}]);else startNew()};const startNew=()=>meta.seenIntro?manor():playIntro(manor);
  modal('',`<div style="text-align:center;color:#c8bca0;font-size:12px">Vault ${meta.gold}g &middot; Soul Coins ${meta.souls} &middot; Generation ${meta.gen} &middot; Wins ${meta.wins||0}</div>`+sum,[
@@ -1279,7 +1282,7 @@ const STN=[
  {id:'shrine',x:258,w:44,n:'Bloodline Shrine',sub:'Heirs',k:'Choose heir'},
  {id:'lib',x:350,w:48,n:'Old Library',sub:'Lore',k:'Read'},
  {id:'gate',x:480,w:60,n:'Castle Road',sub:'Begin run',k:'Begin the run'}];
-function enterHub(){HUBON=1;P=null;closeModal();cv.style.filter='';if(!meta.heirs){meta.heirs=rollHeirs();meta.chosen=0;saveMeta()}if(meta.chosen>=meta.heirs.length)meta.chosen=0;
+function enterHub(){HUBON=1;P=null;closeModal();applyBright(false);if(!meta.heirs){meta.heirs=rollHeirs();meta.chosen=0;saveMeta()}if(meta.chosen>=meta.heirs.length)meta.chosen=0;
  if(!HB2)HB2={x:40,y:HGY-8,vx:0,vy:0,face:1,g:1,t:0};else{HB2.vx=HB2.vy=0}mode='hub';hud();log&&0}
 function hubBack(){closeModal();mode='hub';HUBON=1;hud()}
 const manorOld=manor;manor=function(){enterHub()};
