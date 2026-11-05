@@ -761,11 +761,11 @@ function drawLevel(){const vw=VW/Z,vh=VH/Z,LW=L.w*8,LH=L.h*8;const ck=1-Math.pow
   cx.fillStyle='#120c18';cx.fillRect(px-3,py-3,w+6,28);cx.fillStyle='#c9a24a';cx.fillRect(px,py,w,22);cx.fillStyle='#1e1a34';cx.fillRect(px+3,py+3,w-6,16);cx.fillStyle='#120c18';cx.fillRect(px+w/2-4,py+25,8,4);cx.fillRect(px+w/2-2,py+29,4,3);
   cx.fillStyle='#000';cx.fillText(t,px+w/2+1,py+17);cx.fillStyle='#ffd24a';cx.fillText(t,px+w/2,py+16)}
  drawMinimap()}
-function drawMinimap(){const cw=30,chh=20,gap=6,ox=VW-10-5*(cw+gap),oy=212;cx.fillStyle='#141428dd';cx.fillRect(ox-8,oy-24,5*(cw+gap)+10,4*(chh+gap)+30);cx.strokeStyle='#c9a24a';cx.lineWidth=3;cx.strokeRect(ox-8,oy-24,5*(cw+gap)+10,4*(chh+gap)+30);
+function drawMinimap(){const cw=30,chh=20,gap=6,ox=VW-10-5*(cw+gap),oy=212;cx.fillStyle='#2a2844ee';cx.fillRect(ox-8,oy-24,5*(cw+gap)+10,4*(chh+gap)+30);cx.strokeStyle='#c9a24a';cx.lineWidth=3;cx.strokeRect(ox-8,oy-24,5*(cw+gap)+10,4*(chh+gap)+30);
  cx.fillStyle='#ffd24a';cx.font='bold 11px "Courier New",monospace';cx.textAlign='left';cx.fillText(`FLOOR ${pos?pos.r+1:'-'} - ${F.rooms.filter(r=>r.L&&r.L.cleared).length}/${F.rooms.length} ROOMS`,ox-2,oy-10);
  const all=ML('map')>0,rx=r=>ox+r.gx*(cw+gap),ry=r=>oy+r.gy*(chh+gap);
- for(const r of F.rooms){if(!(r.seen||r.known||all))continue;for(const d in r.doors){const o=r.doors[d];if(d=='r'||d=='d'){cx.fillStyle='#8a7a5a';if(d=='r')cx.fillRect(rx(r)+cw,ry(r)+chh/2-2,gap,4);else cx.fillRect(rx(r)+cw/2-2,ry(r)+chh,4,gap)}}}
- for(const r of F.rooms){if(!(r.seen||r.known||all))continue;const cur=r==F.cur;cx.fillStyle=cur?'#ffd24a':r.seen?(r.L&&r.L.cleared?THM().mm:'#8a3a3a'):'#2a2a40';cx.fillRect(rx(r),ry(r),cw,chh);cx.strokeStyle='#120c18';cx.lineWidth=2;cx.strokeRect(rx(r),ry(r),cw,chh);
+ for(const r of F.rooms){if(!(r.seen||r.known||all))continue;for(const d in r.doors){const o=r.doors[d];if(d=='r'||d=='d'){cx.fillStyle='#c9b48a';if(d=='r')cx.fillRect(rx(r)+cw,ry(r)+chh/2-2,gap,4);else cx.fillRect(rx(r)+cw/2-2,ry(r)+chh,4,gap)}}}
+ for(const r of F.rooms){if(!(r.seen||r.known||all))continue;const cur=r==F.cur;cx.fillStyle=cur?'#ffd24a':r.seen?(r.L&&r.L.cleared?THM().mm:'#c45c5c'):'#4a4868';cx.fillRect(rx(r),ry(r),cw,chh);cx.strokeStyle='#120c18';cx.lineWidth=2;cx.strokeRect(rx(r),ry(r),cw,chh);
   const ic=r.kind=='boss'?'_boss':r.kind=='fairy'?'fchest':r.kind=='treasure'?'chest':null;if(ic&&(r.seen||r.known||all))cx.drawImage(ic=='_boss'?(F.kind=='B'||F.kind=='D'?BICON[bossKey()]:SP.orc):SP[ic],rx(r)+cw/2-8,ry(r)+chh/2-8,16,16);if(cur)cx.drawImage(SP[P.ch.s],rx(r)+2,ry(r)+2,14,14)}}
 
 function dropLoot(e){L.coins=L.coins||[];L.hearts=L.hearts||[];const tier=Math.max(1,Math.ceil(e.xp/4)),fl=(act-1)*3+(run.floors||0);
@@ -1962,10 +1962,10 @@ const POOLD=['brute','dknight','drakek','skel','kobold'];
 const ACTICON=[['goblin','brute'],['skel','dknight'],['kobold','drakek'],['brute','dknight']];
 
 // ---------- ACT THEMES: tiles, backgrounds, torches, particles, minimap ----------
-const THEMES={1:{n:'den',tint:'#ff3a1a',ta:.5,fl:['#ff3a1a','#ffb02a'],glow:'255,70,30',emb:[255,90,40],mm:'#7a2a1a'},
- 2:{n:'crypt',tint:'#2affc0',ta:.62,fl:['#2affc0','#c8fff0'],glow:'60,255,200',emb:[120,255,220],mm:'#1e5a52',mist:1},
- 3:{n:'lair',tint:'#ff9a2a',ta:.78,fl:['#ff8a1a','#ffe27a'],glow:'255,150,40',emb:[255,170,60],mm:'#7a5a1a'},
- 4:{n:'throne',tint:'#8a3aff',ta:.68,fl:['#c04aff','#ffb0ff'],glow:'200,70,255',emb:[220,120,255],mm:'#4a2a6a'}};
+const THEMES={1:{n:'den',tint:'#ff3a1a',ta:.5,fl:['#ff3a1a','#ffb02a'],glow:'255,70,30',emb:[255,90,40],mm:'#b85a3c'},
+ 2:{n:'crypt',tint:'#2affc0',ta:.62,fl:['#2affc0','#c8fff0'],glow:'60,255,200',emb:[120,255,220],mm:'#3a9a8c',mist:1},
+ 3:{n:'lair',tint:'#ff9a2a',ta:.78,fl:['#ff8a1a','#ffe27a'],glow:'255,150,40',emb:[255,170,60],mm:'#b88838'},
+ 4:{n:'throne',tint:'#8a3aff',ta:.68,fl:['#c04aff','#ffb0ff'],glow:'200,70,255',emb:[220,120,255],mm:'#7a52a4'}};
 function THM(){return THEMES[F&&F.kind=='D'?4:Math.max(1,Math.min(3,act||1))]}
 function tintCv(src,col,a){const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);g.globalCompositeOperation='color';g.globalAlpha=a;g.fillStyle=col;g.fillRect(0,0,c.width,c.height);g.globalAlpha=1;g.globalCompositeOperation='destination-in';g.drawImage(src,0,0);c.hd=src.hd;return c}
 const TTC=new Map();function TT(img){const th=THM(),k=th.n;let m=TTC.get(k);if(!m){m=new Map();TTC.set(k,m)}let o=m.get(img);if(o)return o;o=tintCv(img,th.tint,th.ta);
