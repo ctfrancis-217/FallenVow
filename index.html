@@ -219,20 +219,20 @@ function paintWeapon(id){const c=cvs(48),g=c.getContext('2d');g.imageSmoothingEn
   p(32,23,S[4]);p(33,23,S[4]);
  }else if(id=='bow'){
   tips=[];
-  for(let y=6;y<=42;y++){const t=(y-24)/18,belly=Math.sin(Math.abs(t)*Math.PI),x=16+Math.round(belly*8),tip=Math.abs(t)>.9;
-   p(x,y,tip?Gd[2]:Wd[2]);p(x+1,y,tip?Gd[3]:Wd[4]);if(y==6||y==42)tips.push({x:13,y:y+.5})}
+  for(let y=6;y<=42;y++){const t=(y-24)/18,belly=Math.sin(Math.abs(t)*Math.PI),x=16+Math.round(belly*8),tip=y==6||y==42;
+   p(x,y,tip?Gd[2]:Wd[2]);p(x+1,y,tip?Gd[3]:Wd[4]);if(tip)tips.push({x:x+.5,y:y+.5})}
   wrap(16,2,Ld[1],Ld[3]);p(16,24,Gd[2]);grip=17;
  }else if(id=='axe'){
-  shaft(2,22);r(1,23,2,2,Wd[0]);p(1,23,Wd[3]);
-  for(let y=8;y<=42;y++){const t=(y-24)/17,ax=Math.min(1,Math.abs(t));
-   let outer=Math.round(43-ax*ax*11),thick=Math.max(2,Math.round(3+(1-ax)*3));
-   if(t>0.2){const b=t-0.2;outer-=Math.round(b*b*20);thick=Math.max(2,thick-Math.round(b*2))}
-   let inner=outer-thick;
-   if(y>=22&&y<=25)inner=Math.min(inner,22);
-   inner=Math.max(18,inner);outer=Math.min(46,outer);
-   if(outer<inner)continue;
-   for(let x=inner;x<=outer;x++){const u=(x-inner)/Math.max(1,outer-inner);p(x,y,u>.78?S[4]:u>.45?S[3]:u>.18?S[2]:S[1])}}
-  p(24,23,S[0]);p(26,24,S[0]);p(22,23,Gd[2]);
+  // double-bit: a broad crescent above the haft and its mirror below
+  for(let x=4;x<=30;x++){p(x,23,x%2?Ld[2]:Ld[1]);p(x,24,x%2?Ld[0]:Ld[1])}
+  r(2,22,2,4,Fe[2]);p(2,22,Fe[4]);p(3,25,Fe[0]);p(1,23,Fe[4]);p(1,24,Fe[1]);
+  grip=6.5;
+  const up=[[8,28,36],[9,26,39],[10,24,41],[11,23,42],[12,22,43],[13,22,43],[14,22,42],[15,23,41],[16,24,39],[17,26,36],[18,28,34]];
+  for(const [y,x0,x1] of up){const yy=47-y;
+   for(const row of [y,yy])for(let x=x0;x<=x1;x++){const u=(x-x0)/(x1-x0||1),edge=y<11||x<=x0+1||x>=x1-1,etch=!edge&&u>.35&&u<.65&&((x+row)%4==0);
+    p(x,row,edge?S[4]:etch?S[0]:S[2])}}
+  for(let y=18;y<=29;y++)for(let x=26;x<=34;x++)if(y<23||y>24)p(x,y,S[1]);
+  for(const [x,y] of [[30,20],[30,27]]){p(x,y,Fe[0]);p(x-1,y,S[4]);p(x+1,y,S[3])}
  }else if(id=='spear'){
   // thin shaft, short collar, then a long leaf (about 3.5x longer than its widest point)
   shaft(2,20);r(1,23,2,2,Fe[2]);p(1,23,Fe[4]);
@@ -261,15 +261,20 @@ function paintWeapon(id){const c=cvs(48),g=c.getContext('2d');g.imageSmoothingEn
   p(40,23,S[4]);p(41,23,S[4]);
   for(let x=18;x<=32;x+=2)p(x,24,S[0]);
  }else{
+  // crude iron slab: ~2.7x the old 8px blade, still knight-tall, short grip
   r(1,22,2,4,Fe[2]);p(1,22,Fe[4]);p(2,25,Fe[0]);
   wrap(4,4,Ld[1],Ld[3]);
-  r(9,18,2,12,Fe[3]);r(9,18,2,1,Fe[4]);r(9,29,2,1,Fe[0]);p(10,23,Fe[4]);
-  for(let x=12;x<=46;x++){const t=(x-12)/34;let y0=20,y1=27;if(t>.48){y0=21;y1=26}if(t>.76){y0=22;y1=25}
-   for(let y=y0;y<=y1;y++){if((x==18&&y==20)||(x==19&&y==20)||(x==28&&y==27)||(x==29&&y==27)||(x==36&&y==21)||(x==37&&y==21)||(x==23&&y==27)||(x==33&&y==20))continue;
-    const top=y==y0,bot=y==y1;let col=top?Fe[4]:bot?Fe[0]:(y<24?Fe[3]:Fe[2]);p(x,y,col)}}
-  p(16,22,Fe[4]);p(18,22,Fe[4]);p(21,23,Fe[4]);p(27,22,Fe[4]);p(34,23,Fe[1]);
+  r(9,12,2,24,Fe[3]);r(9,12,2,1,Fe[4]);r(9,35,2,1,Fe[0]);p(10,23,Fe[4]);
+  for(let x=12;x<=46;x++){const t=(x-12)/34;let y0=13,y1=34;if(t>.42){y0=15;y1=32}if(t>.68){y0=17;y1=30}if(t>.86){y0=18;y1=29}
+   for(let y=y0;y<=y1;y++){const top=y<=y0+1,bot=y>=y1-1;
+    if(top&&((x==19&&y==y0)||(x==20&&y==y0)||(x==33&&y==y0)))continue;
+    if(bot&&((x==26&&y==y1)||(x==27&&y==y1)||(x==40&&y==y1)))continue;
+    let col=top?Fe[4]:bot?Fe[0]:(y<24?Fe[3]:Fe[2]);p(x,y,col)}}
+  for(const [x,y] of [[15,16],[15,31],[23,19],[23,29],[32,22],[32,27]]){p(x,y,Fe[0]);p(x-1,y,Fe[4])}
  }
- const o=outline(c);o.hd=1;o.ow=24;o.grip={x:grip,y:24};if(tips)o.tips=tips;WGRIP[id]=o.grip;WIMG[id]=o;WURL[id]=cropIcon(o);
+ const o=outline(c);o.hd=1;o.ow=24;o.grip={x:grip,y:24};if(tips)o.tips=tips;WGRIP[id]=o.grip;WIMG[id]=o;
+ let icon=o;if(id=='bow'&&tips&&tips.length==2){icon=cvs(48);const ig=icon.getContext('2d');ig.drawImage(o,0,0);ig.fillStyle='#f4ecd4';const x=Math.round(tips[0].x),y0=Math.round(Math.min(tips[0].y,tips[1].y)),y1=Math.round(Math.max(tips[0].y,tips[1].y));for(let y=y0;y<=y1;y++)ig.fillRect(x,y,1,1)}
+ WURL[id]=cropIcon(icon);
  if(id=='bow'){const a=cvs(16),ag=a.getContext('2d');ag.imageSmoothingEnabled=false;const A=PX(ag);
   A.r(1,7,10,1,'#c08040');A.r(1,8,10,1,'#1c100a');A.r(11,6,3,3,'#c8cfd8');A.p(13,6,'#f4f7fb');A.p(14,7,'#f4f7fb');A.p(13,8,'#2a3142');A.p(1,6,'#e8b070');A.p(2,6,'#e8b070');A.p(1,9,'#6b3c1c');SP.arrow=outline(a)}
  return o}
@@ -2395,12 +2400,13 @@ function drawGauntlet(g,hs){const pix=hs.pix,cols=gauntCols();g.save();g.transla
 function drawHeld(g){const id=P.wep||'sword';if(!WIMG[id])paintWeapon(id);const hs=handScreen(),ang=wepAng(),sc=Z||1,sz=20*sc,ps=sz/48,gp=WGRIP[id]||WIMG[id].grip||{x:5.5,y:24};
  g.save();g.imageSmoothingEnabled=false;g.translate(hs.x,hs.y);g.scale(P.face<0?-1:1,1);
  const smear=P.atkT>0&&(id=='gs'||id=='ugs'||id=='sword'||id=='halb'||id=='axe');
- if(smear){g.save();g.globalAlpha=id=='ugs'?.5:.38;for(let i=3;i>=1;i--){g.save();g.rotate(ang-i*(id=='ugs'?.22:.14));g.fillStyle=i==1?'#c5ccd6':'#5a6272';g.fillRect((gp.x+8)*ps,-ps*.8,sz*(id=='ugs'?.6:.48),ps*1.5);g.restore()}g.restore()}
+ if(smear){g.save();g.globalAlpha=id=='ugs'?.5:.38;for(let i=3;i>=1;i--){g.save();g.rotate(ang-i*(id=='ugs'?.22:.14));g.fillStyle=i==1?'#c5ccd6':'#5a6272';g.fillRect((gp.x+8)*ps,id=='ugs'?-ps*3.2:-ps*.8,sz*(id=='ugs'?.55:.48),id=='ugs'?ps*6.4:ps*1.5);g.restore()}g.restore()}
  g.rotate(ang);g.drawImage(WIMG[id],-gp.x*ps,-gp.y*ps,sz,sz);
- if(id=='bow'&&WIMG[id].tips){const pull=P.bowC?Math.min(8,P.bowC/42*8):P.bowSnap?Math.max(0,P.bowSnap-5):0,pts=WIMG[id].tips,[a,b]=pts;
-  const ax=(a.x-gp.x)*ps,ay=(a.y-gp.y)*ps,bx=(b.x-gp.x)*ps,by=(b.y-gp.y)*ps,mx=(ax+bx)/2-pull*sc,my=(ay+by)/2;
-  g.strokeStyle='#f2e6c8';g.lineWidth=Math.max(1,sc*.35);g.beginPath();g.moveTo(ax,ay);g.lineTo(mx,my);g.lineTo(bx,by);g.stroke();
-  if(P.bowC){g.fillStyle='#c4a060';g.fillRect(mx,my-ps*.35,sc*3.4,ps*.7);const al=.08+P.bowC/42*.16;g.fillStyle='rgba(220,170,80,'+al+')';g.beginPath();g.arc(mx+ps,my,6*sc+P.bowC/42*8*sc,0,7);g.fill()}}
+ if(id=='bow'&&WIMG[id].tips){const full=P.bowC?Math.min(1,P.bowC/42):P.bowSnap?Math.max(0,(P.bowSnap-1)/7):0,pull=full*6.5,pts=WIMG[id].tips,[a,b]=pts;
+  const ax=(a.x-gp.x)*ps,ay=(a.y-gp.y)*ps,bx=(b.x-gp.x)*ps,by=(b.y-gp.y)*ps,mx=(ax+bx)/2-pull*ps,my=(ay+by)/2;
+  g.strokeStyle='#f4ecd4';g.lineWidth=Math.max(1,ps*.9);g.lineJoin='miter';g.beginPath();g.moveTo(ax,ay);g.lineTo(mx,my);g.lineTo(bx,by);g.stroke();
+  if(P.bowC){g.fillStyle='#6b3c1c';g.fillRect(mx,my-ps*.4,ps*8,ps*.8);g.fillStyle='#e8b070';g.fillRect(mx,my-ps*.4,ps*8,ps*.35);g.fillStyle='#d8dce8';g.fillRect(mx+ps*7.2,my-ps*.9,ps*2.4,ps*1.8);g.fillStyle='#f4f7fb';g.fillRect(mx+ps*8.6,my-ps*.35,ps*1.2,ps*.7);
+   const al=.12+P.bowC/42*.28;g.fillStyle='rgba(255,214,120,'+al+')';g.beginPath();g.arc(mx,my,ps*(1.6+full*2.4),0,7);g.fill()}}
  g.restore();drawGauntlet(g,hs)}
 {const _dl=drawLevel;drawLevel=function(){const r=_dl.apply(this,arguments);if(!L||!P||P.hp<=0)return r;const X=x=>Math.round((x-L.camX)*Z),Y=y=>Math.round((y-L.camY)*Z);
  drawHeld(cx);
