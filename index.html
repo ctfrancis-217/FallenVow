@@ -934,7 +934,17 @@ function manor(){mode=HUBON?'modal':'title';P=null;const rows=[0,1,2].map(t=>`<d
   <b style="color:${mx?'#6fe86f':'#ffd24a'}">${m.n}</b><br><small>${m.d}</small><br>${'&#9632;'.repeat(lv)}${'&#9633;'.repeat(m.max-lv)} ${mx?'MAX':lock?'LOCKED: needs '+MANOR.find(x=>x.id==m.req).n:c+'g'}</div>`}).join('')+'</div>').join('<div style="text-align:center;color:#5a4630">&#9650; &#9650; &#9650;</div>');
  modal('Bloodline Upgrades',`<i style="color:#c890ff">The blacksmith of Ashenmere reforges the family’s legacy, paid from the vault.</i><br>Spend the family vault on permanent upgrades. Gold left over will feed the Gatekeeper’s toll (Charon, the Demon Lord’s ferryman).<br>Vault: <b style="color:#ffd24a">${meta.gold} gold</b><br>`+rows,[{t:'Back to Ashenmere',p:1,f:hubBack}],1)}
 function buyManor(id){const m=MANOR.find(x=>x.id==id),lv=ML(id);if(lv>=m.max||meta.gold<m.c[lv])return;meta.gold-=m.c[lv];meta.manor[id]=lv+1;saveMeta();manorOld()}
-function heirImg(h){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.imageSmoothingEnabled=false;const s=h.traits.includes('giant')?96:h.traits.includes('dwarf')?56:76;if(h.traits.includes('mono'))g.filter='grayscale(1)';g.drawImage(heirSet(h).idle[0],(96-s)/2,96-s,s,s);return c.toDataURL()}
+function heirImg(h){const c=document.createElement('canvas');c.width=c.height=96;const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+ const big=document.createElement('canvas');big.width=big.height=360;const bg=big.getContext('2d');bg.imageSmoothingEnabled=false;
+ const ds=h.traits&&h.traits.includes('giant')?1.35:h.traits&&h.traits.includes('dwarf')?.7:1,S=20*ds*4,ox=150,oy=150,id=(WEAPONS[h.weapon]?h.weapon:'sword');
+ if(h.traits&&h.traits.includes('mono'))bg.filter='grayscale(1)';
+ const kn=heirSet(h,1).idle[0];bg.drawImage(kn,ox,oy,S,S);
+ paintHeld(bg,{id,x:ox+42.5/64*S,y:oy+(42.5+(kn.bob||0))/64*S,sc:S/(20*ds),ds,face:1,ang:idleWepAng(id),heir:h});
+ const idat=bg.getImageData(0,0,360,360).data;let x0=360,y0=360,x1=0,y1=0;
+ for(let y=0;y<360;y++)for(let x=0;x<360;x++)if(idat[(y*360+x)*4+3]){if(x<x0)x0=x;if(y<y0)y0=y;if(x>x1)x1=x;if(y>y1)y1=y}
+ if(x1<x0){g.drawImage(big,0,0,96,96);return c.toDataURL()}
+ const pad=5,bw=x1-x0+1,bh=y1-y0+1,k=Math.min((96-pad*2)/bw,(96-pad*2)/bh),dw=Math.max(1,Math.round(bw*k)),dh=Math.max(1,Math.round(bh*k));
+ g.drawImage(big,x0,y0,bw,bh,Math.round((96-dw)/2),Math.round((96-dh)/2),dw,dh);return c.toDataURL()}
 function heirSelect(){if(!meta.heirs){meta.heirs=rollHeirs();saveMeta()}const H=meta.heirs;H.forEach(kitHeir);
  modal('Blood of the Fallen Paladin',`<div style="text-align:center;color:#c890ff;margin-bottom:6px"><b style="color:#ffd24a">Year ${vowYear()} of the Vow</b> &middot; Generation ${meta.gen}<br><small>Another century, another child of Aldric’s line takes up the black armor. Choose who will carry the vow.</small></div>`+`<div style="display:flex;gap:10px">`+H.map((h,i)=>{const sp=SPELLS[h.spell],gb=h.traits.reduce((a,t)=>a+TB[t].g,0);return`<div style="flex:1;border:3px solid #c9a24a;background:#1e1a34;padding:10px;font-size:12px">
  <img src="${heirImg(h)}" width="72" height="72" style="image-rendering:pixelated;display:block;margin:0 auto 4px;background:#0b0e1c;border:2px solid #5a4630"><b style="color:#ffd24a">${h.name}</b><br><img src="${wPic(kitHeir(h).weapon)}" width="24" height="24" style="image-rendering:pixelated;vertical-align:middle"> <span style="color:#e8dcc0">${WEAPONS[h.weapon].n}</span><br><small>${wStat(h.weapon)}</small><br><span style="color:#c890ff">Black Knight</span> · <span style="color:#6fc8ff">${sp.n} (${sp.c} MP${sp.cd?`, ${(sp.cd/60).toFixed(1)}s`:''})</span><br><small>${sp.d}</small><br>`+(h.traits.length?h.traits.map(t=>`<span style="color:#f2a05a">${TB[t].n}</span><br><small>${TB[t].d}</small>`).join('<br>'):'<small>No traits</small>')+
@@ -2390,7 +2400,7 @@ const RLX=(function(){
 {const _u=update;update=function(){const r=_u.apply(this,arguments);if(!P||!L||mode!='combat')return r;for(const e of L.mobs){if(e.slow>0){e.slow--;e.vx*=.55;e.vy*=.85}if(e.poi>0){e.poi--;if(e.poi%24==0&&e.hp>0){e.hp-=1;e.fl=tick;if(tick%8==0)L.parts.push({x:e.x+e.w/2,y:e.y,vx:0,vy:-.4,life:12,c:'#6fe86f'})}}}if(L.mets){for(const m of L.mets){m.t--;m.y+=5;if(m.t<=0){const box={x:m.x-14,y:m.y-8,w:28,h:16},d=atk()+8;for(const e of L.mobs)if(e.hp>0&&ov(box,e)){e.hp-=d;e.fl=tick;e.vy=-2;L.fx.push({x:e.x+e.w/2,y:e.y-2,t:tick,s:''+d,c:'#ff8a2a'})}shake=Math.max(shake,7);burst(m.x,m.y,'#ff8a2a',16)}}L.mets=L.mets.filter(m=>m.t>0)}return r}}
 function wepAng(){const id=P.wep||'sword',k=QW().kind,len=P.mvLen||14,u=P.atkT>0?1-P.atkT/len:1,ci=P.chainI||0;
  if(P.bowC)return -.15-Math.min(1,P.bowC/42)*.35;
- if(!(P.atkT>0))return P.bowSnap?-.05:({sword:.42,bow:0,axe:.58,spear:.16,halb:.26,gs:.46,ugs:-2.05}[id]??.4);
+ if(!(P.atkT>0))return P.bowSnap?-.05:idleWepAng(id);
  if(id=='sword')return [-1.1,-.15,.15,.9][ci]+u*1.15;
  if(k=='thrust')return -.05+Math.sin(Math.min(1,u*1.4)*Math.PI)*.12;
  if(k=='cleave')return -1.6+u*2.9;
@@ -2401,23 +2411,25 @@ function wepAng(){const id=P.wep||'sword',k=QW().kind,len=P.mvLen||14,u=P.atkT>0
 function handScreen(){const ds=P.ds||1,sx=P.sx||1,sy=P.sy||1,sc=Z||1,w=20*ds*sx,h=20*ds*sy,fx=P.x+P.w/2,fy=P.y+P.h+ds*1.25,top=fy-h,bob=P._hb||0,pix=w*sc/64,piy=h*sc/64;
  if(P.face<0){const tx=Math.round((fx+w/2-L.camX)*sc),ty=Math.round((top-L.camY)*sc);return {x:tx-42.5*pix,y:ty+(42.5+bob)*piy,pix}}
  const tx=Math.round((fx-w/2-L.camX)*sc),ty=Math.round((top-L.camY)*sc);return {x:tx+42.5*pix,y:ty+(42.5+bob)*piy,pix}}
-function gauntCols(){const h=P&&P.heir,i=h&&h.name?hhash(h.name)%HPAL.length:0;if(!i)return ['#342a4a','#7a6ca0','#15111f'];const a=HPAL[i].a;return [a[2],a[4],a[0]]}
-function drawGauntlet(g,hs){const pix=hs.pix,cols=gauntCols();g.save();g.translate(hs.x,hs.y);g.imageSmoothingEnabled=false;if(P.face<0)g.scale(-1,1);
+function idleWepAng(id){return {sword:.42,bow:0,axe:.58,spear:.16,halb:.26,gs:.46,ugs:-2.05}[id]??.4}
+function gauntCols(h){h=h||(P&&P.heir);const i=h&&h.name?hhash(h.name)%HPAL.length:0;if(!i)return ['#342a4a','#7a6ca0','#15111f'];const a=HPAL[i].a;return [a[2],a[4],a[0]]}
+function drawGauntlet(g,hs,face,heir){const pix=hs.pix,cols=gauntCols(heir),f=face==null?(P?P.face:1):face;g.save();g.translate(hs.x,hs.y);g.imageSmoothingEnabled=false;if(f<0)g.scale(-1,1);
  for(let y=0;y<7;y++)for(let x=0;x<7;x++){const x1=Math.round((x-3.5)*pix),y1=Math.round((y-3.5)*pix),x2=Math.round((x+1-3.5)*pix),y2=Math.round((y+1-3.5)*pix);
   g.fillStyle=(y==6||x==6)?cols[2]:(y==0||x==0)?cols[1]:cols[0];g.fillRect(x1,y1,Math.max(1,x2-x1),Math.max(1,y2-y1))}g.restore()}
- function drawHeld(g){const id=P.wep||'sword';if(!WIMG[id])paintWeapon(id);const hs=handScreen(),ang=wepAng(),sc=Z||1,src=WIMG[id].width||48,big=id=='ugs'?1.6:1,sz=20*sc*big,ps=sz/src,gp=WGRIP[id]||WIMG[id].grip||{x:5.5,y:src/2};
- g.save();g.imageSmoothingEnabled=false;g.translate(hs.x,hs.y);g.scale(P.face<0?-1:1,1);
- const smear=P.atkT>0&&(id=='gs'||id=='ugs'||id=='sword'||id=='halb'||id=='axe');
+function paintHeld(g,o){const id=o.id||'sword';if(!WIMG[id])paintWeapon(id);const ang=o.ang||0,sc=o.sc||1,face=o.face||1,src=WIMG[id].width||48,big=id=='ugs'?1.6:1,sz=20*sc*big,ps=sz/src,gp=WGRIP[id]||WIMG[id].grip||{x:5.5,y:src/2},pix=(20*(o.ds||1)*sc)/64,hs={x:o.x,y:o.y,pix};
+ g.save();g.imageSmoothingEnabled=false;g.translate(hs.x,hs.y);g.scale(face<0?-1:1,1);
+ const smear=o.atk&&(id=='gs'||id=='ugs'||id=='sword'||id=='halb'||id=='axe');
  if(smear){g.save();g.globalAlpha=id=='ugs'?.5:.38;for(let i=3;i>=1;i--){g.save();g.rotate(ang-i*(id=='ugs'?.22:.14));g.fillStyle=i==1?'#e8eef6':'#5a6272';g.fillRect((id=='ugs'?30:gp.x+8)*ps,id=='ugs'?-8*ps:-ps*.8,sz*(id=='ugs'?.62:.48),id=='ugs'?16*ps:ps*1.5);g.restore()}g.restore()}
  g.rotate(ang);g.drawImage(WIMG[id],-gp.x*ps,-gp.y*ps,sz,sz);
- if(id=='bow'&&WIMG[id].tips){const full=P.bowC?Math.min(1,P.bowC/42):P.bowSnap?Math.max(0,(P.bowSnap-1)/7):0,pull=full*6.5,pts=WIMG[id].tips,[a,b]=pts;
+ if(id=='bow'&&WIMG[id].tips){const full=o.bowC?Math.min(1,o.bowC/42):o.bowSnap?Math.max(0,(o.bowSnap-1)/7):0,pull=full*6.5,pts=WIMG[id].tips,[a,b]=pts;
   const ax=(a.x-gp.x)*ps,ay=(a.y-gp.y)*ps,bx=(b.x-gp.x)*ps,by=(b.y-gp.y)*ps,mx=(ax+bx)/2-pull*ps,my=(ay+by)/2;
   g.strokeStyle='#f4ecd4';g.lineWidth=Math.max(1,ps*.9);g.lineJoin='miter';g.beginPath();g.moveTo(ax,ay);g.lineTo(mx,my);g.lineTo(bx,by);g.stroke();
-  if(P.bowC){g.fillStyle='#6b3c1c';g.fillRect(mx,my-ps*.4,ps*8,ps*.8);g.fillStyle='#e8b070';g.fillRect(mx,my-ps*.4,ps*8,ps*.35);g.fillStyle='#d8dce8';g.fillRect(mx+ps*7.2,my-ps*.9,ps*2.4,ps*1.8);g.fillStyle='#f4f7fb';g.fillRect(mx+ps*8.6,my-ps*.35,ps*1.2,ps*.7);
-   const al=.12+P.bowC/42*.28;g.fillStyle='rgba(255,214,120,'+al+')';g.beginPath();g.arc(mx,my,ps*(1.6+full*2.4),0,7);g.fill()}}
+  if(o.bowC){g.fillStyle='#6b3c1c';g.fillRect(mx,my-ps*.4,ps*8,ps*.8);g.fillStyle='#e8b070';g.fillRect(mx,my-ps*.4,ps*8,ps*.35);g.fillStyle='#d8dce8';g.fillRect(mx+ps*7.2,my-ps*.9,ps*2.4,ps*1.8);g.fillStyle='#f4f7fb';g.fillRect(mx+ps*8.6,my-ps*.35,ps*1.2,ps*.7);
+   const al=.12+o.bowC/42*.28;g.fillStyle='rgba(255,214,120,'+al+')';g.beginPath();g.arc(mx,my,ps*(1.6+full*2.4),0,7);g.fill()}}
  g.restore();
- if(id=='ugs'&&WIMG[id].grip2){const lx=(WIMG[id].grip2-gp.x)*ps,ca=Math.cos(ang),sa=Math.sin(ang);let rx=lx*ca;if(P.face<0)rx=-rx;drawGauntlet(g,{x:hs.x+rx,y:hs.y+lx*sa,pix:hs.pix})}
- drawGauntlet(g,hs)}
+ if(id=='ugs'&&WIMG[id].grip2){const lx=(WIMG[id].grip2-gp.x)*ps,ca=Math.cos(ang),sa=Math.sin(ang);let rx=lx*ca;if(face<0)rx=-rx;drawGauntlet(g,{x:hs.x+rx,y:hs.y+lx*sa,pix},face,o.heir)}
+ drawGauntlet(g,hs,face,o.heir)}
+function drawHeld(g){const id=P.wep||'sword',hs=handScreen();paintHeld(g,{id,x:hs.x,y:hs.y,sc:Z||1,ds:P.ds||1,face:P.face,ang:wepAng(),atk:P.atkT>0,bowC:P.bowC,bowSnap:P.bowSnap,heir:P.heir})}
 {const _dl=drawLevel;drawLevel=function(){const r=_dl.apply(this,arguments);if(!L||!P||P.hp<=0)return r;const X=x=>Math.round((x-L.camX)*Z),Y=y=>Math.round((y-L.camY)*Z);
  drawHeld(cx);
  if(L.pshots)for(const s of L.pshots)if(s.s=='arrow'){cx.fillStyle='#c4b49a';for(let i=1;i<=4;i++)cx.fillRect(X(s.x-s.vx*i*.35),Y(s.y+1),Math.max(1,Z*.7),Math.max(1,Z*.45))}
