@@ -1,0 +1,129 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage repo root
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          rsync -a --exclude '.git/' --exclude '_site/' ./ _site/
+          test -f _site/index.html
+          test -f _site/CNAME
+          test -f _site/.nojekyll
+          cmp index.html _site/index.html
+          cmp CNAME _site/CNAME
+          cmp .nojekyll _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deploy1
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Back off before deploy retry 1
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy to GitHub Pages (retry 1)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Back off before deploy retry 2
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (retry 2)
+        id: deploy3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Back off before deploy retry 3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
+        run: sleep 180
+
+      - name: Deploy to GitHub Pages (retry 3)
+        id: deploy4
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - name: Record deployment URL
+        id: deployment
+        if: steps.deploy1.outcome == 'success' || steps.deploy2.outcome == 'success' || steps.deploy3.outcome == 'success' || steps.deploy4.outcome == 'success'
+        run: |
+          set -euo pipefail
+          url=""
+          if [ "${{ steps.deploy1.outcome }}" = "success" ]; then url="${{ steps.deploy1.outputs.page_url }}"; fi
+          if [ "${{ steps.deploy2.outcome }}" = "success" ]; then url="${{ steps.deploy2.outputs.page_url }}"; fi
+          if [ "${{ steps.deploy3.outcome }}" = "success" ]; then url="${{ steps.deploy3.outputs.page_url }}"; fi
+          if [ "${{ steps.deploy4.outcome }}" = "success" ]; then url="${{ steps.deploy4.outputs.page_url }}"; fi
+          echo "page_url=${url}" >> "$GITHUB_OUTPUT"
+          echo "Deployed: ${url}"
+
+      - name: Verify live site matches index.html
+        if: steps.deploy1.outcome == 'success' || steps.deploy2.outcome == 'success' || steps.deploy3.outcome == 'success' || steps.deploy4.outcome == 'success'
+        run: |
+          set -euo pipefail
+          expected=$(sha256sum index.html | awk '{print $1}')
+          echo "expected ${expected}"
+          deadline=$((SECONDS + 240))
+          attempt=0
+          while true; do
+            attempt=$((attempt + 1))
+            tmp=$(mktemp)
+            bust="$(date +%s)-${attempt}-${RANDOM}"
+            if curl -fsSL \
+                -H 'Cache-Control: no-cache' \
+                -H 'Pragma: no-cache' \
+                -A 'FallenVow-pages-verify' \
+                "https://fallenvow.com/?nocache=${bust}" \
+                -o "$tmp"; then
+              actual=$(sha256sum "$tmp" | awk '{print $1}')
+              echo "attempt ${attempt} actual ${actual}"
+              if [ "$actual" = "$expected" ]; then
+                echo "live site matches committed index.html"
+                rm -f "$tmp"
+                exit 0
+              fi
+            else
+              echo "attempt ${attempt} fetch failed"
+            fi
+            rm -f "$tmp"
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "live site did not match index.html within 4 minutes"
+              exit 1
+            fi
+            sleep 15
+          done
