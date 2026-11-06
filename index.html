@@ -295,7 +295,7 @@ function wepHit(){const t=P.atkT,id=P.wep||'sword',k=QW().kind;P.wShape=null;con
  if(k=='cleave'){if(t==9){shake=Math.max(shake,6);for(let i=0;i<8;i++)L.parts.push({x:P.x+P.face*(8+i*2),y:P.y+P.h,vx:P.face*(.5+Math.random()),vy:-.5-Math.random()*.8,life:14,c:i%2?'#b8a888':'#6a5848'})}if(t<=9&&t>=6)return go('chop',1,0);return null}
  if(k=='sweep'){if(t<=14&&t>=9)return go('sweep',.65,0);if(t<=7&&t>=4)return go('hook',.35,1);return null}
  if(id=='gs'){if(t<=11&&t>=7)return go('arc',1,0);return null}
- if(k=='ultra'){if(t==11){shake=Math.max(shake,12);for(let i=0;i<12;i++)L.parts.push({x:P.x+P.face*(4+i*3),y:P.y+P.h-1,vx:P.face*(.8+Math.random()*1.6),vy:-1.2-Math.random()*1.6,life:18,c:i%3?'#3a404c':'#8a929e'})}if(t<=11&&t>=7)return go('cleave',1,0);return null}
+ if(k=='ultra'){const len=P.mvLen||MV.atkT,u=1-t/len;if(t==11){shake=Math.max(shake,12);for(let i=0;i<12;i++)L.parts.push({x:P.x+P.face*(4+i*3),y:P.y+P.h-1,vx:P.face*(.8+Math.random()*1.6),vy:-1.2-Math.random()*1.6,life:18,c:i%3?'#3a404c':'#8a929e'})}if(u>=.48&&u<=.86)return go('cleave',1,0);return null}
  return t<=12&&t>=6?go('slash',1,0):null}
 function wPic(id){const k=WEAPONS[id]?id:'sword';if(!WURL[k])paintWeapon(k);return WURL[k]}
 function QW(){return WEAPONS[(P&&P.wep)||'sword']||WEAPONS.sword}
@@ -582,6 +582,9 @@ function hurt(d,srcX){if(P.inv>0||P.blockT>0)return;{const arm=1-(1-(has('bulwar
  if(P.hp<=0&&has('phoenix')&&!run.phx){run.phx=1;P.hp=3;P.inv=150;burst(P.x+3,P.y+4,'#ff8a2a',30);log('The Phoenix Feather blazes! You rise again!','#ff8a2a')}P.inv=75;P.kbT=12;P.vx=(P.x<srcX?-1:1)*2.6;P.vy=-2.6;shake=10;hitstop=6;
  L.fx.push({x:P.x,y:P.y-4,t:tick,s:'-'+d,c:'#ff5050'});log(`You take ${d} damage!`,'#f66');if(P.hp<=0){P.hp=0;die()}}
 function swordBox(){const d=P.atkDir,g=(has('gsword')?1.4:1)*Math.max(1,P.ds),r=Math.round(17*g);if(d=='low'){const w=r+8;return{x:P.face>0?P.x-2:P.x+P.w+2-w,y:P.y+P.h-7,w,h:9}}return d=='up'?{x:P.x-4,y:P.y+1-r,w:P.w+8,h:r}:d=='down'?{x:P.x-4,y:P.y+P.h-1,w:P.w+8,h:r}:{x:P.face>0?P.x+P.w-1:P.x-r,y:P.y-4,w:r+1,h:P.h+7}}
+function handWorld(){const ds=P.ds||1,sx=P.sx||1,sy=P.sy||1,w=20*ds*sx,h=20*ds*sy,fx=P.x+P.w/2,fy=P.y+P.h+ds*1.25,top=fy-h,bob=P._hb||0,px=w/64,py=h/64;return{x:P.face<0?fx+w/2-42.5*px:fx-w/2+42.5*px,y:top+(42.5+bob)*py}}
+function ugsBladeBoxes(){if(!WIMG.ugs)paintWeapon('ugs');const hw=handWorld(),ang=wepAng(),face=P.face||1,ps=20*1.6/72,g=WGRIP.ugs,tip=70,ca=Math.cos(ang),sa=Math.sin(ang),pts=[];for(let i=0;i<6;i++){const lx=(tip-g.x)*ps*i/5;let rx=lx*ca,ry=lx*sa;if(face<0)rx=-rx;pts.push({x:hw.x+rx,y:hw.y+ry})}const rad=3.2;return pts.map(p=>({x:p.x-rad,y:p.y-rad,w:rad*2,h:rad*2}))}
+function attackTouch(o){if(!o||!P)return false;if(P.wShape=='cleave')return ugsBladeBoxes().some(b=>ov(b,o));const b=swordBox();return !!(b&&ov(b,o))}
 function burst(x,y,c,n=8){for(let i=0;i<n;i++)L.parts.push({x,y,vx:(Math.random()-.5)*3,vy:(Math.random()-.8)*3,life:20+R(20),c})}
 function openChest(c){if(c.open)return;if(c.kind=='fairy'){if(c.fail){log('This fairy chest is sealed.','#6fe8ff');return}if(!L.cleared){log('Clear the room to unseal the fairy chest!','#6fe8ff');return}}
  c.open=1;sfx('open');burst(c.x+4,c.y+2,c.kind=='fairy'?'#6fe8ff':'#ffd24a',24);const g=addGold((c.kind=='fairy'?30:c.big?30:12)+R(12)+act*6);log(`Chest opened: +${g} gold!`,'#ffd24a');
@@ -626,13 +629,13 @@ function update(){tick++;if(mode!='combat'||isModal()){pressed.clear();return}P.
  if(P.y>L.h*8+16){P.x=P.safe.x;P.y=P.safe.y;P.vx=P.vy=0}
  // sword hits
  if(P.atkT>0){P.atkT--;const _wp=wepHit();if(_wp){P.hitId=P.swing*10+(P.chainI||0)*3+_wp.sub;P.wDmg=_wp.dmg;const sb=swordBox();let pogo=false;
-  for(const e of L.mobs)if(e.hitBy!=P.hitId&&!e.hidden&&!e.imm&&ov(sb,e)){if(e.shield&&(P.atkDir=='side'||P.atkDir=='low')&&Math.sign((P.x+P.w/2)-(e.x+e.w/2))==e.face){e.hitBy=P.hitId;sfx('block');burst(e.x+(e.face>0?e.w:0),e.y+e.h/2,'#ffd24a',8);L.fx.push({x:e.x+e.w/2,y:e.y-4,t:tick,s:'BLOCK',c:'#9aa3b8'});P.vx-=P.face*1.5;continue}e.hitBy=P.hitId;sfx('hit');const cr=has('glassc')||Math.random()<.05*CU('crit')+(has('hawk')?.1:0)+(has('razor')?.1:0)+(has('eclipse')?.2:0)+(P.buff&&P.buff.id=='dram'&&P.buff.t>0?.1:0),d=Math.max(1,Math.round((atk()+R(2))*QW().dmg*(P.wDmg||1)))*(cr?(has('exring')?3:2):1);if(has('pact')){P.pactN=(P.pactN||0)+1;if(P.pactN%4==0&&P.hp<P.mhp){heal(1);L.fx.push({x:P.x+3,y:P.y-6,t:tick,s:'+1',c:'#ff6f8f'})}}e.hp-=d;e.crit=cr;if(cr)sfx('hit');e.fl=tick;hitstop=MV.hitstop;shake=Math.max(shake,4);P.mp=Math.min(P.mmp,P.mp+1);
+  for(const e of L.mobs)if(e.hitBy!=P.hitId&&!e.hidden&&!e.imm&&attackTouch(e)){if(e.shield&&(P.atkDir=='side'||P.atkDir=='low')&&Math.sign((P.x+P.w/2)-(e.x+e.w/2))==e.face){e.hitBy=P.hitId;sfx('block');burst(e.x+(e.face>0?e.w:0),e.y+e.h/2,'#ffd24a',8);L.fx.push({x:e.x+e.w/2,y:e.y-4,t:tick,s:'BLOCK',c:'#9aa3b8'});P.vx-=P.face*1.5;continue}e.hitBy=P.hitId;sfx('hit');const cr=has('glassc')||Math.random()<.05*CU('crit')+(has('hawk')?.1:0)+(has('razor')?.1:0)+(has('eclipse')?.2:0)+(P.buff&&P.buff.id=='dram'&&P.buff.t>0?.1:0),d=Math.max(1,Math.round((atk()+R(2))*QW().dmg*(P.wDmg||1)))*(cr?(has('exring')?3:2):1);if(has('pact')){P.pactN=(P.pactN||0)+1;if(P.pactN%4==0&&P.hp<P.mhp){heal(1);L.fx.push({x:P.x+3,y:P.y-6,t:tick,s:'+1',c:'#ff6f8f'})}}e.hp-=d;e.crit=cr;if(cr)sfx('hit');e.fl=tick;hitstop=MV.hitstop;shake=Math.max(shake,4);P.mp=Math.min(P.mmp,P.mp+1);
    L.fx.push({x:e.x+e.w/2,y:e.y-2,t:tick,s:cr?d+'!':''+d,c:cr?'#ffd24a':'#fff'});burst(e.x+e.w/2,e.y+e.h/2,'#fff',7);
    if(!e.boss){const sg=QW().stag;e.kb=Math.round(12*sg);e.vx=(P.wShape=='hook'?-P.face:P.atkDir=='side'||P.atkDir=='low'?P.face:Math.sign(e.x-P.x)||1)*2.8*sg;if(e.ai!='fly')e.vy=(P.atkDir=='up'?-2.8:-1.4)*sg;else e.vy=(P.atkDir=='down'?2:P.atkDir=='up'?-2:0)*sg}
    if(P.atkDir=='down')pogo=true;else if(P.atkDir=='side'&&P.kbT<=0)P.vx-=P.face*1.4}
-  for(const sh of L.shots)if(ov(sb,sh)){sh.dead=1;burst(sh.x,sh.y,'#f80',6);if(P.atkDir=='down')pogo=true}
-  for(const pr of L.props)if(!pr.dead&&ov(sb,pr)){pr.dead=1;sfx('break');burst(pr.x+3,pr.y+3,'#9a5a2a',12);const g=addGold(2+R(4));burst(pr.x+3,pr.y+3,'#ffd24a',6);L.fx.push({x:pr.x+3,y:pr.y-2,t:tick,s:'+'+g+'g',c:'#ffd24a'});if(R(10)==0&&Math.random()<DROPM())L.items.push({x:pr.x,y:pr.y,w:6,h:6,vx:0,vy:-2});if(P.atkDir=='down')pogo=true}
-  for(const c of L.chests)if(!c.open&&ov(sb,c))openChest(c);
+  for(const sh of L.shots)if(attackTouch(sh)){sh.dead=1;burst(sh.x,sh.y,'#f80',6);if(P.atkDir=='down')pogo=true}
+  for(const pr of L.props)if(!pr.dead&&attackTouch(pr)){pr.dead=1;sfx('break');burst(pr.x+3,pr.y+3,'#9a5a2a',12);const g=addGold(2+R(4));burst(pr.x+3,pr.y+3,'#ffd24a',6);L.fx.push({x:pr.x+3,y:pr.y-2,t:tick,s:'+'+g+'g',c:'#ffd24a'});if(R(10)==0&&Math.random()<DROPM())L.items.push({x:pr.x,y:pr.y,w:6,h:6,vx:0,vy:-2});if(P.atkDir=='down')pogo=true}
+  for(const c of L.chests)if(!c.open&&attackTouch(c))openChest(c);
   if(pogo){P.vy=-4.2;P.canDash=1;P.airJ=1;P.atkT=5;P.chainLeft=0}}if(P.atkT<=0&&P.chainLeft>0){P.chainLeft--;P.chainI=(P.chainI||0)+1;P.atkT=P.mvLen||Math.max(8,Math.round(MV.atkT/QW().spd));sfx('slash')}}
  for(const c of L.chests)if(!c.open&&ov(P,c)&&(I.interP||I.uP))openChest(c);
  L.nearPortal=!!(L.portal&&ov(P,L.portal));if(L.nearPortal&&I.interP)return tryLeave();
@@ -2587,7 +2590,7 @@ const V42=(function(){
   if(pz.t!='run'){const tx=L.mx+(L.mx>=23?4:-4),y=floorY(tx,8)??groundY(tx,8);L.chests.push({x:tx*8,y,w:8,h:8,kind:'gold',big:1,pz:1})}
   const g=addGold(15+R(10)+AI()*8);L.banner={t:180,s:'PUZZLE SOLVED! A REWARD APPEARS',c:'#6fe86f'};log(`Puzzle solved! +${g} gold and a treasure chest.`,'#6fe86f');run.pz=(run.pz||0)+1;meta.stats.pz=(meta.stats.pz||0)+1;saveMeta()}
  const fail=()=>{L.pz.fails++;sfx('hurt');shake=Math.max(shake,4);L.banner={t:90,s:'WRONG - THE MECHANISM RESETS',c:'#ff5a3a'}};
- const dst=el=>Math.hypot(P.x+P.w/2-(el.x+el.w/2),(P.y+P.h/2-(el.y+el.h/2))*1.5);function used(el){const near=Math.abs(P.x+P.w/2-(el.x+el.w/2))<14+el.w/2&&Math.abs(P.y+P.h/2-(el.y+el.h/2))<22;if(ACT&&near&&L.pz.el.every(o=>o===el||dst(o)>=dst(el)||o.k!=el.k)){ACT=0;return 1}if(P.atkT>0&&P.swing!==el._sw){const sb=swordBox();if(ov(sb,el)){el._sw=P.swing;return 1}}return 0}
+ const dst=el=>Math.hypot(P.x+P.w/2-(el.x+el.w/2),(P.y+P.h/2-(el.y+el.h/2))*1.5);function used(el){const near=Math.abs(P.x+P.w/2-(el.x+el.w/2))<14+el.w/2&&Math.abs(P.y+P.h/2-(el.y+el.h/2))<22;if(ACT&&near&&L.pz.el.every(o=>o===el||dst(o)>=dst(el)||o.k!=el.k)){ACT=0;return 1}if(P.atkT>0&&P.swing!==el._sw&&attackTouch(el)){el._sw=P.swing;return 1}return 0}
  function beam(pz){const seg=[];let[x,y]=pz.src,[dx,dy]=pz.sd||[1,0],hit=0;x+=dx;y+=dy;for(let n=0;n<120;n++){if(x<0||y<0||x>=L.w||y>=L.h||L.m[y][x]==1)break;seg.push([x,y]);if(x==pz.cry[0]&&y==pz.cry[1]){hit=1;break}
    const q=pz.mir.find(q=>q.x==x&&q.y==y);if(q&&q.s){if(q.s==1){[dx,dy]=[-dy,-dx]}else{[dx,dy]=[dy,dx]}}x+=dx;y+=dy}return{seg,hit}}
  // mirror states: 0 = edge-on (light passes), 1 = '/', 2 = '\'
@@ -2906,7 +2909,7 @@ const TRAP=(function(){
    if(h.t>=h.atk){h.ph='out';h.t=0}}
   else{h.al=Math.max(0,1-h.t/h.out);h.x+=h.vx*.25;h.y+=h.vy*.25;if(h.t>=h.out)h.life=0}
   // slash dissipates (not a real enemy — no XP/loot)
-  if(h.life>0&&h.ph!='out'&&P.atkT>0){const sb=swordBox();if(sb&&ov(sb,h)){h.ph='out';h.t=Math.max(h.t,Math.floor(h.out*.55));burst(h.x+5,h.y+7,'#e8fff8',14);sfx('kill')}}
+  if(h.life>0&&h.ph!='out'&&P.atkT>0&&attackTouch(h)){h.ph='out';h.t=Math.max(h.t,Math.floor(h.out*.55));burst(h.x+5,h.y+7,'#e8fff8',14);sfx('kill')}
   h.x=Math.max(8,Math.min(L.w*8-h.w-8,h.x));h.y=Math.max(8,Math.min((L.h-2)*8-h.h,h.y))}
  function stepLava(h){if(h.warn>0){h.warn--;if(h.warn==0){sfx('break');shake=Math.max(shake,5);burst((h.dir>0?h.x:h.x+h.w),h.y+5,'#ff8a2a',16);if(h.vent)burst(h.vent.x+3,h.vent.y+5,'#ffd24a',8)}
    if(h.warn>0&&h.warn%6==0)L.parts.push({x:(h.dir>0?h.x:h.x+h.w)+R(3),y:h.y+2+R(6),vx:h.dir*(.4+Math.random()),vy:-.5-Math.random(),life:18,c:'#ff8a2a'});return}
