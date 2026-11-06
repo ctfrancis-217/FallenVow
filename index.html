@@ -227,12 +227,16 @@ function paintWeapon(id){const c=cvs(48),g=c.getContext('2d');g.imageSmoothingEn
   for(let x=4;x<=30;x++){p(x,23,x%2?Ld[2]:Ld[1]);p(x,24,x%2?Ld[0]:Ld[1])}
   r(2,22,2,4,Fe[2]);p(2,22,Fe[4]);p(3,25,Fe[0]);p(1,23,Fe[4]);p(1,24,Fe[1]);
   grip=6.5;
-  const up=[[8,28,36],[9,26,39],[10,24,41],[11,23,42],[12,22,43],[13,22,43],[14,22,42],[15,23,41],[16,24,39],[17,26,36],[18,28,34]];
-  for(const [y,x0,x1] of up){const yy=47-y;
-   for(const row of [y,yy])for(let x=x0;x<=x1;x++){const u=(x-x0)/(x1-x0||1),edge=y<11||x<=x0+1||x>=x1-1,etch=!edge&&u>.35&&u<.65&&((x+row)%4==0);
-    p(x,row,edge?S[4]:etch?S[0]:S[2])}}
-  for(let y=18;y<=29;y++)for(let x=26;x<=34;x++)if(y<23||y>24)p(x,y,S[1]);
-  for(const [x,y] of [[30,20],[30,27]]){p(x,y,Fe[0]);p(x-1,y,S[4]);p(x+1,y,S[3])}
+  // curved edge between two sharp horns; inner notches beside the eye
+  const up=[[8,31,35],[9,28,38],[10,25,41],[11,23,43],[12,22,44],[13,21,44],[14,20,45]];
+  const paint=(y,x0,x1,edge)=>{const yy=47-y;for(const row of [y,yy])for(let x=x0;x<=x1;x++){const u=(x-x0)/(x1-x0||1),etch=!edge&&u>.32&&u<.68&&((x+row)%4==0);
+    p(x,row,edge||x===x0||x===x1?S[4]:etch?S[0]:S[2])}};
+  for(const [y,x0,x1] of up)paint(y,x0,x1,y<10);
+  // horns: each crescent ends in two sharp points, with the notch between them and the eye
+  const horns=[[15,19,24,42,45],[16,18,22,43,46],[17,18,20,45,46],[18,18,19,46,46],[19,18,18,46,46]];
+  for(const [y,a,b,c,d] of horns){paint(y,a,b,1);paint(y,c,d,1)}
+  for(let y=14;y<=22;y++)for(let x=30;x<=36;x++){p(x,y,S[1]);const yy=47-y;if(yy!==y)p(x,yy,S[1])}
+  for(const [x,y] of [[32,19],[32,28]]){p(x,y,Fe[0]);p(x-1,y,S[4]);p(x+1,y,S[3])}
  }else if(id=='spear'){
   // thin shaft, short collar, then a long leaf (about 3.5x longer than its widest point)
   shaft(2,20);r(1,23,2,2,Fe[2]);p(1,23,Fe[4]);
@@ -265,12 +269,12 @@ function paintWeapon(id){const c=cvs(48),g=c.getContext('2d');g.imageSmoothingEn
   r(1,22,2,4,Fe[2]);p(1,22,Fe[4]);p(2,25,Fe[0]);
   wrap(4,4,Ld[1],Ld[3]);
   r(9,12,2,24,Fe[3]);r(9,12,2,1,Fe[4]);r(9,35,2,1,Fe[0]);p(10,23,Fe[4]);
-  for(let x=12;x<=46;x++){const t=(x-12)/34;let y0=13,y1=34;if(t>.42){y0=15;y1=32}if(t>.68){y0=17;y1=30}if(t>.86){y0=18;y1=29}
-   for(let y=y0;y<=y1;y++){const top=y<=y0+1,bot=y>=y1-1;
-    if(top&&((x==19&&y==y0)||(x==20&&y==y0)||(x==33&&y==y0)))continue;
-    if(bot&&((x==26&&y==y1)||(x==27&&y==y1)||(x==40&&y==y1)))continue;
-    let col=top?Fe[4]:bot?Fe[0]:(y<24?Fe[3]:Fe[2]);p(x,y,col)}}
-  for(const [x,y] of [[15,16],[15,31],[23,19],[23,29],[32,22],[32,27]]){p(x,y,Fe[0]);p(x-1,y,Fe[4])}
+  const y0=13,y1=34,cy=23.5,rad=(y1-y0+1)/2,xFlat=34;
+  for(let y=y0;y<=y1;y++){const dy=y+.5-cy,extra=Math.sqrt(Math.max(0,rad*rad-dy*dy)),xEnd=xFlat+Math.round(extra);
+   for(let x=12;x<=xEnd;x++){const rim=x>=xEnd-1,top=y===y0,bot=y===y1;
+    if(!rim&&top&&(x===18||x===27))continue;if(!rim&&bot&&(x===22||x===31))continue;
+    const col=rim?Fe[4]:top?Fe[4]:bot?Fe[0]:y<24?Fe[3]:Fe[2];p(x,y,col)}}
+  for(const [x,y] of [[16,17],[16,30],[24,20],[24,28],[33,22],[33,26]]){p(x,y,Fe[0]);p(x-1,y,Fe[4])}
  }
  const o=outline(c);o.hd=1;o.ow=24;o.grip={x:grip,y:24};if(tips)o.tips=tips;WGRIP[id]=o.grip;WIMG[id]=o;
  let icon=o;if(id=='bow'&&tips&&tips.length==2){icon=cvs(48);const ig=icon.getContext('2d');ig.drawImage(o,0,0);ig.fillStyle='#f4ecd4';const x=Math.round(tips[0].x),y0=Math.round(Math.min(tips[0].y,tips[1].y)),y1=Math.round(Math.max(tips[0].y,tips[1].y));for(let y=y0;y<=y1;y++)ig.fillRect(x,y,1,1)}
