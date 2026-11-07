@@ -314,7 +314,7 @@ function setBright(v){let n=Math.round(+v);if(!(n>=50&&n<=150))n=100;meta.bright
 function log(m,c='#e8e0d0'){logs.unshift([m,c]);logs=logs.slice(0,9);hud()}
 const CUPS=[{id:'hp',n:'Iron Constitution',d:'+1 max Heart',max:5,b:15},{id:'atk',n:'Tempered Blade',d:'+1 attack',max:5,b:20},{id:'mp',n:'Deep Reserves',d:'+3 max mana',max:5,b:12},
 {id:'dash',n:'Shadow Step',d:'-8% dash cooldown',max:4,b:15},{id:'aeg',n:'Unbroken Aegis',d:'+0.2s Dark Aegis duration',max:4,b:18},{id:'spp',n:'Hexcraft',d:'+2 spell damage',max:5,b:15},{id:'crit',n:'Executioner',d:'+5% critical hit chance (x2 damage)',max:5,b:20}];
-const CU=id=>{const c=P?P.ch.id:'bk';return((meta.cu[c]||{})[id])||0},cuCost=(u,lv)=>Math.round(u.b*1.5*(lv+1)+u.b*.9*lv*lv);
+const CU=id=>{const c=P?P.ch.id:'bk';return((meta.cu[c]||{})[id])||0},SOUL_MULT=7,cuCost=(u,lv)=>Math.round(SOUL_MULT*(u.b*1.5*(lv+1)+u.b*.9*lv*lv));
 function forge(ch='bk',back){if(back)forgeBack=back;const C=CHARS.find(c=>c.id==ch)||CHARS[0],m=meta.cu[C.id]=meta.cu[C.id]||{};
  modal('Soul Forge',`Soul Coins dropped by slain foes are bound to your bloodline &mdash; Charon cannot take them. Spend them on permanent upgrades for <b style="color:#c890ff">${C.n}</b>.<br>Soul Coins: <b id="soulc" style="color:#e0a0ff">${meta.souls}</b><br><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">`+CUPS.map(u=>{const lv=m[u.id]||0,mx=lv>=u.max,c=cuCost(u,lv),ok=!mx&&meta.souls>=c;
   return `<div onclick="${ok?`buyCU('${C.id}','${u.id}')`:''}" style="cursor:${ok?'pointer':'default'};border:3px solid ${mx?'#6fe86f':ok?'#ffd24a':'#5a4630'};background:#1e1a34;padding:6px;opacity:${ok||mx?1:.6}"><b style="color:#ffd24a">${u.n}</b> <small>${'&#9632;'.repeat(lv)}${'&#9633;'.repeat(u.max-lv)}</small><br><small>${u.d}</small><br><small style="color:#e0a0ff">${mx?'MASTERED':c+' Soul Coins'}</small></div>`}).join('')+'</div>',[{t:'Back',p:1,f:()=>(forgeBack||mainMenu)()}])}
@@ -953,7 +953,7 @@ function title(){mode='title';P=null;applyBright(false);modal('Fallen Vow','The 
 function manor(){mode=HUBON?'modal':'title';P=null;const rows=[0,1,2].map(t=>`<div style="display:flex;gap:8px;margin:6px 0">`+MANOR.filter(m=>m.tier==t).map(m=>{const lv=ML(m.id),mx=lv>=m.max,lock=m.req&&!ML(m.req),c=mx?0:m.c[lv],ok=!mx&&!lock&&meta.gold>=c;
   return`<div onclick="${ok?`buyManor('${m.id}')`:''}" style="flex:1;cursor:${ok?'pointer':'default'};padding:8px;border:3px solid ${mx?'#6fe86f':lock?'#3a3644':ok?'#ffd24a':'#5a4630'};background:${lock?'#0e0e1a':'#1e1a34'};opacity:${lock?.5:1};font-size:12px">
   <b style="color:${mx?'#6fe86f':'#ffd24a'}">${m.n}</b><br><small>${m.d}</small><br>${'&#9632;'.repeat(lv)}${'&#9633;'.repeat(m.max-lv)} ${mx?'MAX':lock?'LOCKED: needs '+MANOR.find(x=>x.id==m.req).n:c+'g'}</div>`}).join('')+'</div>').join('<div style="text-align:center;color:#5a4630">&#9650; &#9650; &#9650;</div>');
- modal('Bloodline Upgrades',`<i style="color:#c890ff">The blacksmith of Ashenmere reforges the family’s legacy, paid from the vault.</i><br>Spend the family vault on permanent upgrades. Gold left over will feed the Gatekeeper’s toll (Charon, the Demon Lord’s ferryman).<br>Vault: <b style="color:#ffd24a">${meta.gold} gold</b><br>`+rows,[{t:'Back to Ashenmere',p:1,f:hubBack}],1)}
+ modal('Bloodline Upgrades',`<i style="color:#c890ff">The blacksmith of Ashenmere reforges the family’s legacy, paid from the vault.</i><br>Spend the family vault on permanent upgrades. The castle road charges a small toll; Charon\u2019s Bargain lowers it.<br>Vault: <b style="color:#ffd24a">${meta.gold} gold</b><br>`+rows,[{t:'Back to Ashenmere',p:1,f:hubBack}],1)}
 function buyManor(id){const m=MANOR.find(x=>x.id==id),lv=ML(id);if(lv>=m.max||meta.gold<m.c[lv])return;meta.gold-=m.c[lv];meta.manor[id]=lv+1;saveMeta();manorOld()}
 function heirFrame(){const w=innerWidth,h=innerHeight;if(h<560||w<980)return Math.max(112,Math.min(168,Math.floor((Math.min(w,980)-72)/3)));return 192}
 function heirImg(h,view){view=view||heirFrame();const N=640,big=document.createElement('canvas');big.width=big.height=N;const bg=big.getContext('2d');bg.imageSmoothingEnabled=false;
@@ -971,9 +971,7 @@ function heirSelect(){if(!meta.heirs){meta.heirs=rollHeirs();saveMeta()}const H=
  modal('Blood of the Fallen Paladin',`<div style="text-align:center;color:#c890ff;margin-bottom:6px"><b style="color:#ffd24a">Year ${vowYear()} of the Vow</b> &middot; Generation ${meta.gen}<br><small>Another century, another child of Aldric’s line takes up the black armor. Choose who will carry the vow.</small></div>`+`<div style="display:flex;gap:10px">`+H.map((h,i)=>{const sp=SPELLS[h.spell],gb=h.traits.reduce((a,t)=>a+TB[t].g,0);return`<div style="flex:1;border:3px solid #c9a24a;background:#1e1a34;padding:10px;font-size:12px">
  <img src="${heirImg(h,192)}" width="192" height="192" style="image-rendering:pixelated;image-rendering:crisp-edges;display:block;margin:0 auto 6px;background:#0b0e1c;border:2px solid #5a4630"><b style="color:#ffd24a">${h.name}</b><br><img src="${wPic(kitHeir(h).weapon)}" width="24" height="24" style="image-rendering:pixelated;vertical-align:middle"> <span style="color:#e8dcc0">${WEAPONS[h.weapon].n}</span><br><small>${wStat(h.weapon)}</small><br><span style="color:#c890ff">Black Knight</span> · <span style="color:#6fc8ff">${sp.n} (${sp.c} MP${sp.cd?`, ${(sp.cd/60).toFixed(1)}s`:''})</span><br><small>${sp.d}</small><br>`+(h.traits.length?h.traits.map(t=>`<span style="color:#f2a05a">${TB[t].n}</span><br><small>${TB[t].d}</small>`).join('<br>'):'<small>No traits</small>')+
  (gb?`<br><b style="color:#ffd24a">+${Math.round(gb*100)}% gold</b>`:'')+`</div>`}).join('')+'</div>',H.map((h,i)=>({t:`${i==meta.chosen?'★ ':''}Choose ${h.name}`,p:i==meta.chosen,f:()=>{meta.chosen=i;saveMeta();sfx('relic');hubBack()}})).concat([{t:'Back to town',f:hubBack}]),1)}
-function charon(h){const toll=Math.round(meta.gold*Math.max(0,1-.2*ML('toll')));
- modal('The Gatekeeper\u2019s Toll',`At the end of the castle road, the Gatekeeper blocks the way. Banked gold is beyond his reach. "None enter with unspent gold..."<br><br>Vault: ${meta.gold} gold &middot; Toll: <b style="color:#ff5a3a">${toll} gold</b>${ML('toll')?` (Charon\u2019s Bargain -${20*ML('toll')}%)`:''}<br>You keep: ${meta.gold-toll} gold`,
- [{t:`Pay ${toll} gold and enter`,p:1,f:()=>{meta.gold-=toll;meta.heirs=null;saveMeta();newRun(h)}},{t:'Back to town (bank or spend it first)',f:hubBack}])}
+function charon(h){openGate(h)}
 // ---------- settings (controls tab + remap) / pause ----------
 let rebind=null,settingsBack=null;
 const kname=k=>/^mouse\d/.test(k)?(['LMB','MMB','RMB'][+k.slice(5)]||'Mouse'+(+k.slice(5)+1)):k==' '?'Space':k.length==1?k.toUpperCase():k.replace('arrow','').replace(/^./,c=>c.toUpperCase());
@@ -1150,6 +1148,8 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1})}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'souls',date:'Nov 7, 2026',t:'Soul Forge prices',d:'Soul Coin drops are the same. Each Soul Forge rank costs seven times what it used to, so one clear of the castle no longer masters the Black Knight. Ranks you already bought stay bought, and the Soul Coins you are holding stay in your purse. Bloodline upgrades still take gold, at the same prices.'},
+ {id:'bank',date:'Nov 7, 2026',t:'Ashenmere Bank and the gate',d:'The bank has no storage cap. Deposit any gold you carry. Withdrawals still cost 10%, and banked gold is still safe when you die. Starting a run no longer gives the Gatekeeper every coin in your vault. He charges 25g (20% less per level of Charon\u2019s Bargain: 20g, 15g, then 10g). The toll comes from the vault first, and from the bank only if the vault is short. If you cannot pay it, he lets you through and you keep what you have. Continuing a saved run does not charge it again.'},
  {id:'36',date:'Nov 6, 2026',t:'Floor map and the way out',d:'The floor map marks loot as soon as it changes. Gold means a chest or pickup is still there. Cyan means the fairy chest can still be opened. A green check means nothing obtainable is left. A fairy chest that sealed because you were hit does not count, and leaving the floor does not ask you to stay when that is all that remains.'},
  {id:'35',date:'Nov 6, 2026',t:'Spear and Aegis Shard',d:'The spear attacks 15% slower. With no direction it still thrusts, and every third thrust is a double jab. Hold up for a rising swing. Hold down on the ground for a spinning leg sweep. Hold down in the air and it still plunges and bounces. Aegis Shard opens with a 0.2 second parry: a physical blow stuns that attacker for 1 second, and a spell or ranged shot is sent back. The barrier then blocks for the rest of its time. Dark Aegis is unchanged.'},
  {id:'34',date:'Nov 6, 2026',t:'Ultra greatsword',d:'The ultra greatsword\u2019s hit follows the blade through the chop, instead of a box that missed the tip. Its stats and the shoulder windup are unchanged.'},
@@ -1448,8 +1448,23 @@ ENDING.length=0;ENDING.push(
 );
 
 // ---------- HUB: the town of Ashenmere beneath the Demon Lord's castle ----------
-const TOWN='Ashenmere';let HUBON=0,HB2=null;meta.bank=meta.bank||0;meta.chosen=meta.chosen||0;
-const BANK_CAP=()=>600+200*Math.min(5,(meta.wins||0)+Math.floor((meta.gen-1)/3)),BANK_FEE=.1;
+const TOWN='Ashenmere';let HUBON=0,HB2=null;meta.chosen=meta.chosen||0;
+const BANK_FEE=.1,GATE_FEE=25;
+function saneGold(n){n=Math.floor(Number(n));return Number.isFinite(n)&&n>0?n:0}
+meta.bank=saneGold(meta.bank);
+function bankFee(n){n=saneGold(n);return n?Math.min(n,Math.ceil(n*BANK_FEE)):0}
+function bankDeposit(amt){const held=saneGold(meta.gold),bank=saneGold(meta.bank);let d=amt==null?held:saneGold(amt);d=Math.min(held,d);if(!d)return;meta.gold=held-d;meta.bank=bank+d;saveMeta();sfx('coin');hubStation('bank')}
+function bankWithdrawAll(){const bank=saneGold(meta.bank);if(!bank)return;const fee=bankFee(bank);meta.gold=saneGold(meta.gold)+(bank-fee);meta.bank=0;saveMeta();sfx('coin');hubStation('bank')}
+function gateDue(){const lv=Math.max(0,Math.min(3,ML('toll')||0));return Math.round(GATE_FEE*(1-.2*lv))}
+function gatePlan(){const due=gateDue(),vault=saneGold(meta.gold),bank=saneGold(meta.bank),total=vault+bank,lv=Math.max(0,Math.min(3,ML('toll')||0)),waived=total<due,pay=waived?0:due,fromVault=Math.min(vault,pay);return {due,vault,bank,total,pay,fromVault,fromBank:pay-fromVault,waived,lv}}
+let gateBusy=false;
+function chargeGate(){if(gateBusy)return null;gateBusy=true;const p=gatePlan();meta.gold=p.vault-p.fromVault;meta.bank=p.bank-p.fromBank;saveMeta();return p}
+function openGate(h,opt){gateBusy=false;const p=gatePlan(),back=()=>{gateBusy=false;(opt&&opt.back?opt.back:hubBack)()};
+ const bargain=p.lv?` Charon\u2019s Bargain takes ${20*p.lv}% off the 25g toll.`:'';
+ const src=p.waived?`You have ${p.vault}g in the vault and ${p.bank}g in the bank, short of the toll. Charon lets you pass, and you keep both.`:`Taken from the vault: <b>${p.fromVault}g</b>. Taken from the bank: <b>${p.fromBank}g</b>.<br>You keep: vault <b style="color:#ffd24a">${p.vault-p.fromVault}g</b>, bank <b style="color:#6fe8a0">${p.bank-p.fromBank}g</b>.`;
+ modal('The Gatekeeper\u2019s Toll',`The castle road costs <b style="color:#ff5a3a">${p.due}g</b>.${bargain} The vault pays first. The bank pays only what the vault cannot.<br><br>Vault: <b style="color:#ffd24a">${p.vault}g</b> &middot; Bank: <b style="color:#6fe8a0">${p.bank}g</b><br>${src}`,
+  [{t:p.waived?'Enter (toll waived)':`Pay ${p.due}g and enter`,p:1,f:()=>{const paid=chargeGate();if(!paid)return;meta.heirs=null;saveMeta();closeModal();if($('skip'))$('skip').style.display='none';CUT=null;newRun(h);log(paid.waived?'The Gatekeeper lets you pass. The toll is waived.':`The Gatekeeper takes ${paid.fromVault}g from the vault`+(paid.fromBank?` and ${paid.fromBank}g from the bank`:'')+'.','#ff8a5a');if(opt&&opt.quick){log('Quick Start! Straight into the first fight.','#ffd24a');const av=avail(),n=av.find(x=>x.t=='M')||av[0];if(n)chooseNode(n)}window.QS_T=performance.now()}},
+   {t:p.waived?'Back':'Back (pay nothing)',f:back}])}
 const HUBW=560,HGY=120;
 const STN=[
  {id:'smith',x:70,w:56,n:'Blacksmith',sub:'Upgrades',k:'Forge upgrades'},
@@ -1470,14 +1485,14 @@ function hubUpdate(){if(mode!='hub'){return}const qs=pressed.has('q');const I=re
  const s=hubNear();if(s&&I.interP){sfx('click');hubStation(s.id)}}
 function hubStation(id){const H=hubHeir();
  if(id=='smith')modal('The Blacksmith','<i style="color:#c8bca0">"Back again, blood of Aldric? Bring me gold and souls, and I\u2019ll make that cursed armor sing."</i><br><br>Soul Coins: <b style="color:#b05ae0">'+meta.souls+'</b> &middot; Vault: <b style="color:#ffd24a">'+meta.gold+'g</b>',[{t:'Soul Forge (knight upgrades, Soul Coins)',p:1,f:()=>forge('bk',hubBack)},{t:'Bloodline Upgrades (vault gold)',f:manorOld},{t:'Leave',f:hubBack}]);
- else if(id=='bank'){const cap=BANK_CAP(),room=Math.max(0,cap-meta.bank),fee=Math.ceil(meta.bank*BANK_FEE);
-  modal('Ashenmere Bank','<i style="color:#c8bca0">"The Gatekeeper takes all unspent gold you carry to the gate. Gold in my vault is safe from him \u2014 for a modest fee on withdrawal."</i><br><br>Family vault (taxed at the gate): <b style="color:#ffd24a">'+meta.gold+'g</b><br>Banked (safe): <b style="color:#6fe8a0">'+meta.bank+'g</b> / cap '+cap+'g<br><small>Deposits are free. Withdrawals cost '+Math.round(BANK_FEE*100)+'%. Cap grows with victories and generations.</small>',
-  [{t:'Deposit all ('+Math.min(meta.gold,room)+'g)',p:1,dis:!meta.gold||!room,f:()=>{const d=Math.min(meta.gold,room);meta.gold-=d;meta.bank+=d;saveMeta();sfx('coin');hubStation('bank')}},
-   {t:'Deposit 50g',dis:meta.gold<1||!room,f:()=>{const d=Math.min(50,meta.gold,room);meta.gold-=d;meta.bank+=d;saveMeta();sfx('coin');hubStation('bank')}},
-   {t:'Withdraw all (fee '+fee+'g, get '+(meta.bank-fee)+'g)',dis:!meta.bank,f:()=>{meta.gold+=meta.bank-fee;meta.bank=0;saveMeta();sfx('coin');hubStation('bank')}},{t:'Leave',f:hubBack}])}
+ else if(id=='bank'){const held=saneGold(meta.gold),bank=saneGold(meta.bank),fee=bankFee(bank);if(meta.gold!==held||meta.bank!==bank){meta.gold=held;meta.bank=bank;saveMeta()}
+  modal('Ashenmere Bank','<i style="color:#c8bca0">"Gold here is safe when you fall. The Gatekeeper\u2019s toll is a small fee, taken from what you carry first and from this vault only if you are short."</i><br><br>Family vault: <b style="color:#ffd24a">'+held+'g</b><br>Banked (safe): <b style="color:#6fe8a0">'+bank+'g</b><br><small>Deposits are free. Withdrawals cost '+Math.round(BANK_FEE*100)+'%. There is no storage cap. A run costs '+GATE_FEE+'g before Charon\u2019s Bargain.</small>',
+  [{t:'Deposit all ('+held+'g)',p:1,dis:!held,f:()=>bankDeposit(held)},
+   {t:'Deposit 50g',dis:!held,f:()=>bankDeposit(50)},
+   {t:'Withdraw all (fee '+fee+'g, get '+(bank-fee)+'g)',dis:!bank,f:bankWithdrawAll},{t:'Leave',f:hubBack}])}
  else if(id=='shrine')heirSelect();
  else if(id=='lib')modal('The Old Library','<i style="color:#c8bca0">Dusty shelves hold everything the bloodline has learned of the Demon Lord\u2019s castle.</i>',[{t:'Journal of the Vow',p:1,f:()=>journal(hubBack)},{t:'Relic Index',f:()=>relicIndex('all',hubBack)},{t:'Chronicle (replay intro)',f:()=>playIntro(enterHub)},{t:'Credits',f:()=>{credits();modalBtns[0].f=hubBack}},{t:'Leave',f:hubBack}]);
- else if(id=='gate')modal('Castle Road','The road to the Demon Lord\u2019s castle.',[{t:'Approach the Gatekeeper',p:1,f:()=>charon(H)},{t:'Quick Start (pay toll, straight to first fight)',f:quickStart},{t:'Back to town',f:hubBack}])}
+ else if(id=='gate')modal('Castle Road','The road to the Demon Lord\u2019s castle. The toll is shown before you pay.',[{t:'Approach the Gatekeeper',p:1,f:()=>charon(H)},{t:'Quick Start (see the toll, then the first fight)',f:quickStart},{t:'Back to town',f:hubBack}])}
 // --- drawing ---
 function drawHub(){const h=HB2;if(!h)return;const Zh=Math.max(2,Math.round(VH/190)),vw=VW/Zh,cam=Math.max(HUBMIN(),Math.min(HUBW-vw,h.x-vw/2)),t=tick,oy=Math.round(VH/Zh-150);
  const X=x=>Math.round((x-cam)*Zh),Y=y=>Math.round((y+oy)*Zh),Rr=(c,x,y,w,hh)=>{cx.fillStyle=c;cx.fillRect(X(x),Y(y),Math.ceil(w*Zh),Math.ceil(hh*Zh))};
@@ -1696,8 +1711,7 @@ function almostHTML(earned){const[g,s]=nearestUpgrade(),f=o=>!o?'':o.need<=0?`<b
  return`<div style="margin-top:10px;padding:8px;border:3px solid #c9a24a;background:#1e1a34"><b style="color:#ffd24a">ALMOST THERE</b><br>Gold earned: <b style="color:#ffd24a">+${earned}g</b> &middot; Vault ${meta.gold}g &middot; Banked <b style="color:#6fe8a0">${meta.bank||0}g</b><br>Blacksmith: ${f(g)||'all bloodline upgrades owned'}<br>Soul Forge: ${f(s)||'fully forged'}`+
  (nl.length||nr.length||ns.length?`<br><span style="color:#c890ff">New this run:</span> `+[...nr.map(n=>'Relic: '+n),...nl.map(n=>'Lore: '+n),...ns.map(n=>'Synergy: '+n)].join(' &middot; '):'<br><small>No new relics or lore this run.</small>')+'</div>'}
 // ---- quick start ----
-function quickStart(){HUBON=1;if(!meta.heirs){meta.heirs=rollHeirs();meta.chosen=0}const h=meta.heirs[meta.chosen]||meta.heirs[0],toll=Math.round(meta.gold*Math.max(0,1-.2*ML('toll')));meta.gold-=toll;meta.heirs=null;saveMeta();closeModal();CUT=null;$('skip')&&($('skip').style.display='none');
- newRun(h);if(toll)log(`The Gatekeeper takes ${toll}g (bank gold first to keep it).`,'#ff8a5a');log('Quick Start! Straight into the first fight.','#ffd24a');const av=avail(),n=av.find(n=>n.t=='M')||av[0];if(n)chooseNode(n);window.QS_T=performance.now()}
+function quickStart(){HUBON=1;if(!meta.heirs){meta.heirs=rollHeirs();meta.chosen=0}const h=meta.heirs[meta.chosen]||meta.heirs[0];openGate(h,{quick:true})}
 {const _nr=newRun;newRun=function(h){_nr.apply(this,arguments);run.j0=(meta.journal||[]).length;run.r0=meta.seenRelics.length;run.s0=meta.syn.length}}
 
 {const _ri=relicIndex;relicIndex=function(f='all',b){_ri(f,b);const g=[...$('box').querySelectorAll('div')].find(d=>d.style.display=='grid');if(!g)return;if(f=='synergy')g.outerHTML=synIndexHTML();else if(f=='all')g.insertAdjacentHTML('afterend',synIndexHTML())}}
