@@ -1150,6 +1150,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1})}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'bank',date:'Nov 7, 2026',t:'Ashenmere Bank',d:'The bank no longer has a storage cap. Deposit any gold you are carrying. Withdrawals still cost 10%, and banked gold is still safe from the Gatekeeper. Victories and generations used to raise the old cap; they do not now, because there is no cap. No purchased upgrade was removed.'},
  {id:'36',date:'Nov 6, 2026',t:'Floor map and the way out',d:'The floor map marks loot as soon as it changes. Gold means a chest or pickup is still there. Cyan means the fairy chest can still be opened. A green check means nothing obtainable is left. A fairy chest that sealed because you were hit does not count, and leaving the floor does not ask you to stay when that is all that remains.'},
  {id:'35',date:'Nov 6, 2026',t:'Spear and Aegis Shard',d:'The spear attacks 15% slower. With no direction it still thrusts, and every third thrust is a double jab. Hold up for a rising swing. Hold down on the ground for a spinning leg sweep. Hold down in the air and it still plunges and bounces. Aegis Shard opens with a 0.2 second parry: a physical blow stuns that attacker for 1 second, and a spell or ranged shot is sent back. The barrier then blocks for the rest of its time. Dark Aegis is unchanged.'},
  {id:'34',date:'Nov 6, 2026',t:'Ultra greatsword',d:'The ultra greatsword\u2019s hit follows the blade through the chop, instead of a box that missed the tip. Its stats and the shoulder windup are unchanged.'},
@@ -1448,8 +1449,13 @@ ENDING.length=0;ENDING.push(
 );
 
 // ---------- HUB: the town of Ashenmere beneath the Demon Lord's castle ----------
-const TOWN='Ashenmere';let HUBON=0,HB2=null;meta.bank=meta.bank||0;meta.chosen=meta.chosen||0;
-const BANK_CAP=()=>600+200*Math.min(5,(meta.wins||0)+Math.floor((meta.gen-1)/3)),BANK_FEE=.1;
+const TOWN='Ashenmere';let HUBON=0,HB2=null;meta.chosen=meta.chosen||0;
+const BANK_FEE=.1;
+function saneGold(n){n=Math.floor(Number(n));return Number.isFinite(n)&&n>0?n:0}
+meta.bank=saneGold(meta.bank);
+function bankFee(n){n=saneGold(n);return n?Math.min(n,Math.ceil(n*BANK_FEE)):0}
+function bankDeposit(amt){const held=saneGold(meta.gold),bank=saneGold(meta.bank);let d=amt==null?held:saneGold(amt);d=Math.min(held,d);if(!d)return;meta.gold=held-d;meta.bank=bank+d;saveMeta();sfx('coin');hubStation('bank')}
+function bankWithdrawAll(){const bank=saneGold(meta.bank);if(!bank)return;const fee=bankFee(bank);meta.gold=saneGold(meta.gold)+(bank-fee);meta.bank=0;saveMeta();sfx('coin');hubStation('bank')}
 const HUBW=560,HGY=120;
 const STN=[
  {id:'smith',x:70,w:56,n:'Blacksmith',sub:'Upgrades',k:'Forge upgrades'},
@@ -1470,11 +1476,11 @@ function hubUpdate(){if(mode!='hub'){return}const qs=pressed.has('q');const I=re
  const s=hubNear();if(s&&I.interP){sfx('click');hubStation(s.id)}}
 function hubStation(id){const H=hubHeir();
  if(id=='smith')modal('The Blacksmith','<i style="color:#c8bca0">"Back again, blood of Aldric? Bring me gold and souls, and I\u2019ll make that cursed armor sing."</i><br><br>Soul Coins: <b style="color:#b05ae0">'+meta.souls+'</b> &middot; Vault: <b style="color:#ffd24a">'+meta.gold+'g</b>',[{t:'Soul Forge (knight upgrades, Soul Coins)',p:1,f:()=>forge('bk',hubBack)},{t:'Bloodline Upgrades (vault gold)',f:manorOld},{t:'Leave',f:hubBack}]);
- else if(id=='bank'){const cap=BANK_CAP(),room=Math.max(0,cap-meta.bank),fee=Math.ceil(meta.bank*BANK_FEE);
-  modal('Ashenmere Bank','<i style="color:#c8bca0">"The Gatekeeper takes all unspent gold you carry to the gate. Gold in my vault is safe from him \u2014 for a modest fee on withdrawal."</i><br><br>Family vault (taxed at the gate): <b style="color:#ffd24a">'+meta.gold+'g</b><br>Banked (safe): <b style="color:#6fe8a0">'+meta.bank+'g</b> / cap '+cap+'g<br><small>Deposits are free. Withdrawals cost '+Math.round(BANK_FEE*100)+'%. Cap grows with victories and generations.</small>',
-  [{t:'Deposit all ('+Math.min(meta.gold,room)+'g)',p:1,dis:!meta.gold||!room,f:()=>{const d=Math.min(meta.gold,room);meta.gold-=d;meta.bank+=d;saveMeta();sfx('coin');hubStation('bank')}},
-   {t:'Deposit 50g',dis:meta.gold<1||!room,f:()=>{const d=Math.min(50,meta.gold,room);meta.gold-=d;meta.bank+=d;saveMeta();sfx('coin');hubStation('bank')}},
-   {t:'Withdraw all (fee '+fee+'g, get '+(meta.bank-fee)+'g)',dis:!meta.bank,f:()=>{meta.gold+=meta.bank-fee;meta.bank=0;saveMeta();sfx('coin');hubStation('bank')}},{t:'Leave',f:hubBack}])}
+ else if(id=='bank'){const held=saneGold(meta.gold),bank=saneGold(meta.bank),fee=bankFee(bank);if(meta.gold!==held||meta.bank!==bank){meta.gold=held;meta.bank=bank;saveMeta()}
+  modal('Ashenmere Bank','<i style="color:#c8bca0">"The Gatekeeper takes all unspent gold you carry to the gate. Gold in my vault is safe from him \u2014 for a modest fee on withdrawal."</i><br><br>Family vault (taxed at the gate): <b style="color:#ffd24a">'+held+'g</b><br>Banked (safe): <b style="color:#6fe8a0">'+bank+'g</b><br><small>Deposits are free. Withdrawals cost '+Math.round(BANK_FEE*100)+'%. There is no storage cap.</small>',
+  [{t:'Deposit all ('+held+'g)',p:1,dis:!held,f:()=>bankDeposit(held)},
+   {t:'Deposit 50g',dis:!held,f:()=>bankDeposit(50)},
+   {t:'Withdraw all (fee '+fee+'g, get '+(bank-fee)+'g)',dis:!bank,f:bankWithdrawAll},{t:'Leave',f:hubBack}])}
  else if(id=='shrine')heirSelect();
  else if(id=='lib')modal('The Old Library','<i style="color:#c8bca0">Dusty shelves hold everything the bloodline has learned of the Demon Lord\u2019s castle.</i>',[{t:'Journal of the Vow',p:1,f:()=>journal(hubBack)},{t:'Relic Index',f:()=>relicIndex('all',hubBack)},{t:'Chronicle (replay intro)',f:()=>playIntro(enterHub)},{t:'Credits',f:()=>{credits();modalBtns[0].f=hubBack}},{t:'Leave',f:hubBack}]);
  else if(id=='gate')modal('Castle Road','The road to the Demon Lord\u2019s castle.',[{t:'Approach the Gatekeeper',p:1,f:()=>charon(H)},{t:'Quick Start (pay toll, straight to first fight)',f:quickStart},{t:'Back to town',f:hubBack}])}
