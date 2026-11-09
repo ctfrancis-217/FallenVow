@@ -1211,7 +1211,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
  const newRun=()=>{if(peekSave())modal('Start a New Run?','This will <b style="color:#ff5a3a">overwrite your saved run</b>. Continue?',[{t:'Cancel',p:1,f:mainMenu},{t:'Yes, start a new run',f:()=>{clearSave();startNew()}}]);else startNew()};const startNew=()=>meta.seenIntro?manor():playIntro(manor);
  modal('',`<div style="text-align:center;color:#c8bca0;font-size:12px">Vault ${meta.gold}g &middot; Soul Coins ${meta.souls} &middot; Generation ${meta.gen} &middot; Wins ${meta.wins||0}</div>`+sum,[
   ...(runActive()?[{t:'Continue',p:1,f:()=>{closeModal();mode=menuReturn||'map';hud()}}]:sv?[{t:'Resume Run',p:1,f:()=>{if(!loadRun()){log('Save was corrupted and has been cleared.','#f66');mainMenu()}}},{t:'New Run',f:newRun}]:[{t:'New Run',p:1,f:newRun}]),
-  ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1})}
+  ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
  {id:'welcome',date:'Nov 9, 2026',t:'A clearer first step',d:'Quick Start shows the heir, and the traits they carry, before the gate. The same card appears when a run ends and you take the next heir. The first fight is one foe, and a fairy challenge is not waiting in the opening rooms. Left click attacks. A foe’s name is visible before you hit them. The first rank of each Soul Forge rite costs 24 Soul Coins; later ranks are unchanged, and ranks you already own stay owned. Locked houses in Ashenmere have their names, and what opens them.'},
@@ -1362,7 +1362,7 @@ const KH={pal:[0,1,2,3].map(f=>knightHi('pal',f)),bk:[0,1,2,3].map(f=>knightHi('
 
 // ---------- cutscene engine ----------
 let CUT=null;
-function playCut(panels,done){CUT={panels,i:0,ch:0,t:0,done};mode='cutscene';closeModal();$('skip').style.display='block';setMusic('menu')}
+function playCut(panels,done){CUT={panels,i:0,ch:0,t:0,done};mode='cutscene';closeModal();$('skip').style.display='block';setMusic('menu');hud()}
 function cutNext(){if(!CUT)return;const pn=CUT.panels[CUT.i];if(CUT.ch<pn.text.length){CUT.ch=pn.text.length;return}CUT.i++;CUT.ch=0;CUT.t=0;sfx('click');if(CUT.i>=CUT.panels.length)cutEnd()}
 function cutEnd(){if(!CUT)return;const d=CUT.done;CUT=null;$('skip').style.display='none';mode='title';d&&d()}
 function drawCut(){const pn=CUT.panels[CUT.i];CUT.t++;CUT.ch=Math.min(pn.text.length,CUT.ch+.7);if(CUT.t%3==0&&CUT.ch<pn.text.length&&pn.text[Math.floor(CUT.ch)]!=' ')sfx('tick'in SFX?'tick':'');
