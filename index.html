@@ -36,7 +36,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-09-resume';
+const BUILD='2026-11-09-calder';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -1196,6 +1196,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1})}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'calder',date:'Nov 9, 2026',t:'A friend in the lane',d:'Calder Voss keeps watch just west of the blacksmith, where a new heir starts. Press E to hear him. He sells nothing, and he does not follow you into the castle. If you have not met him before, that is fine. An older save does not need to know his name.'},
  {id:'resumedraw',date:'Nov 9, 2026',t:'Saved fights open again',d:'Resuming a run after a fight could freeze the picture. The knight’s posed frames were written into the save, and they came back empty, so drawing him failed every frame. Those frames are left out of the save and rebuilt when you return. Health, gold, the floor, a wounded boss, and an open shop stay as they were. A save that already froze will open again; you do not have to abandon the run.'},
  {id:'menudiag',date:'Nov 7, 2026',t:'The menu brings you back',d:'Opening What\u2019s New, Settings, or the Relic Index from the pause menu, then choosing the top button, returns you to the shop, the road, or the fight. It no longer bounces between those screens. The shop and the pause menu show the gold you are carrying. If you save and quit while a shop is still open, that same stock is waiting when you resume, including anything you already bought. Bug report, on the title screen and the pause menu, keeps a short log on this device. Nothing is sent unless you save the report and share it yourself. Clearing that log does not touch your run.'},
  {id:'bosshp',date:'Nov 7, 2026',t:'Hardier bosses',d:'Named bosses, the Demon Lord, and the elite who rules a throne room have 15% more health. Phases still change at one third and two thirds of that health. Ordinary hits, including a halberd, greatsword, great axe, ultra greatsword, or Blink Strike, no longer stagger or shove them, and an attack already underway keeps going. Ordinary enemies and summoned help are unchanged, and so are boss damage and rewards. A successful Aegis Shard parry still stuns its target for 1 second. Leaving and resuming keeps a wounded boss at the health they had.'},
@@ -1522,7 +1523,14 @@ function openGate(h,opt){gateBusy=false;const p=gatePlan(),back=()=>{gateBusy=fa
   [{t:p.waived?'Enter (toll waived)':`Pay ${p.due}g and enter`,p:1,f:()=>{const paid=chargeGate();if(!paid)return;meta.heirs=null;saveMeta();closeModal();if($('skip'))$('skip').style.display='none';CUT=null;newRun(h);log(paid.waived?'The Gatekeeper lets you pass. The toll is waived.':`The Gatekeeper takes ${paid.fromVault}g from the vault`+(paid.fromBank?` and ${paid.fromBank}g from the bank`:'')+'.','#ff8a5a');if(opt&&opt.quick){log('Quick Start! Straight into the first fight.','#ffd24a');const av=avail(),n=av.find(x=>x.t=='M')||av[0];if(n)chooseNode(n)}window.QS_T=performance.now()}},
    {t:p.waived?'Back':'Back (pay nothing)',f:back}])}
 const HUBW=560,HGY=120;
+const CALDER_LINES=[
+ 'The road is kinder if someone sees you off. I am Calder. I keep an eye on this lane, and on whoever walks it.',
+ 'The cap sits backwards so the buckle stays where I can find it. A small, stubborn habit. You will have your own before the castle is done.',
+ 'Ashenmere will still be here when you fall. The smith, the bank, the shrine. Take the vow one room at a time.',
+ 'Come back with a story, even a short one. I collect those. The castle takes enough. It does not get the last word.'];
+function calderTalk(){const bag=meta.npcLine&&typeof meta.npcLine==='object'?meta.npcLine:(meta.npcLine={});const i=(bag.calder|0)%CALDER_LINES.length;bag.calder=i+1;try{saveMeta()}catch(e){}modal('Calder Voss','<i style="color:#c8bca0">"'+CALDER_LINES[i]+'"</i><br><br><small>Road-warden of the lane. He sells nothing.</small>',[{t:'Farewell',p:1,f:hubBack},{t:'Another word',f:calderTalk}])}
 const STN=[
+ {id:'calder',x:0,w:36,n:'Calder Voss',sub:'Road-warden',k:'Talk'},
  {id:'smith',x:70,w:56,n:'Blacksmith',sub:'Upgrades',k:'Forge upgrades'},
  {id:'bank',x:160,w:50,n:'Ashenmere Bank',sub:'Vault',k:'Bank gold'},
  {id:'shrine',x:258,w:44,n:'Bloodline Shrine',sub:'Heirs',k:'Choose heir'},
@@ -1540,7 +1548,8 @@ function hubUpdate(){if(mode!='hub'){return}const qs=pressed.has('q');const I=re
  if(I.jumpP&&h.g){h.vy=-3.4;h.g=0;sfx('jump')}if(!I.jump&&h.vy<-1.2)h.vy=-1.2;h.vy=Math.min(h.vy+.2,4.5);h.x=Math.max(HUBMIN()+6,Math.min(HUBW-10,h.x+h.vx));h.y+=h.vy;if(h.y>=HGY-8){if(!h.g&&h.vy>2)sfx('land'in SFX?'land':'');h.y=HGY-8;h.vy=0;h.g=1}
  const s=hubNear();if(s&&I.interP){sfx('click');hubStation(s.id)}}
 function hubStation(id){const H=hubHeir();
- if(id=='smith')modal('The Blacksmith','<i style="color:#c8bca0">"Back again, blood of Aldric? Bring me gold and souls, and I\u2019ll make that cursed armor sing."</i><br><br>Soul Coins: <b style="color:#b05ae0">'+meta.souls+'</b> &middot; Vault: <b style="color:#ffd24a">'+meta.gold+'g</b>',[{t:'Soul Forge (knight upgrades, Soul Coins)',p:1,f:()=>forge('bk',hubBack)},{t:'Bloodline Upgrades (vault gold)',f:manorOld},{t:'Leave',f:hubBack}]);
+ if(id=='calder')calderTalk();
+ else if(id=='smith')modal('The Blacksmith','<i style="color:#c8bca0">"Back again, blood of Aldric? Bring me gold and souls, and I\u2019ll make that cursed armor sing."</i><br><br>Soul Coins: <b style="color:#b05ae0">'+meta.souls+'</b> &middot; Vault: <b style="color:#ffd24a">'+meta.gold+'g</b>',[{t:'Soul Forge (knight upgrades, Soul Coins)',p:1,f:()=>forge('bk',hubBack)},{t:'Bloodline Upgrades (vault gold)',f:manorOld},{t:'Leave',f:hubBack}]);
  else if(id=='bank'){const held=saneGold(meta.gold),bank=saneGold(meta.bank),fee=bankFee(bank);if(meta.gold!==held||meta.bank!==bank){meta.gold=held;meta.bank=bank;saveMeta()}
   modal('Ashenmere Bank','<i style="color:#c8bca0">"Gold here is safe when you fall. The Gatekeeper\u2019s toll is a small fee, taken from what you carry first and from this vault only if you are short."</i><br><br>Family vault: <b style="color:#ffd24a">'+held+'g</b><br>Banked (safe): <b style="color:#6fe8a0">'+bank+'g</b><br><small>Deposits are free. Withdrawals cost '+Math.round(BANK_FEE*100)+'%. There is no storage cap. A run costs '+GATE_FEE+'g before Charon\u2019s Bargain.</small>',
   [{t:'Deposit all ('+held+'g)',p:1,dis:!held,f:()=>bankDeposit(held)},
@@ -2808,7 +2817,7 @@ function drawGhosts(){if(!L||!L.ghosts||!L.ghosts.length)return;const X=x=>Math.
 {const _dl=drawLevel;drawLevel=function(){_dl();drawGhosts();nearLayer()}}
 // town NPCs
 function npcSprite(c1,c2,skin,hat,f){const c=cvs(16),{r,p,b}=PX(c.getContext('2d')),br=f%2;b(5,7+br,6,7-br,c1);r(5,12,6,1,c2);r(5,14,2,2,'#2a1810');r(9,14,2,2,'#2a1810');b(5,2+br,6,5,skin);p(6,4+br,'#120c18');p(9,4+br,'#120c18');if(hat)r(4,1+br,8,2,hat);r(3,8+br,2,4,c1);r(11,8+br,2,4,c1);return hdify(outline(c))}
-const NPCS={smith:[86,'#6a4a3a','#3a2a20','#e0a878','#2a2a30'],bank:[184,'#2a3a6a','#ffd24a','#e8c8a0','#1a1a2a'],shrine:[300,'#e8e0f0','#b05ae0','#e8c8a0',0],lib:[362,'#3a2a50','#c9a24a','#d8b890','#3a2a50'],gate:[492,'#1a1020','#3a1a30','#5a4a5a','#120810'],herb:[-112,'#3a6a2a','#c8e06a','#d8b890','#2a4a1a'],chapel:[-190,'#f0e8d8','#ffd24a','#e8c8a0',0],tavern:[-252,'#6a3a1a','#c9a24a','#e0a878','#3a2010'],squire:[-336,'#6a6a7a','#8a2a24','#d0a080','#4a4a5a']};
+const NPCS={calder:[8,'#c6a36a','#4a3424','#e4b898',0],smith:[86,'#6a4a3a','#3a2a20','#e0a878','#2a2a30'],bank:[184,'#2a3a6a','#ffd24a','#e8c8a0','#1a1a2a'],shrine:[300,'#e8e0f0','#b05ae0','#e8c8a0',0],lib:[362,'#3a2a50','#c9a24a','#d8b890','#3a2a50'],gate:[492,'#1a1020','#3a1a30','#5a4a5a','#120810'],herb:[-112,'#3a6a2a','#c8e06a','#d8b890','#2a4a1a'],chapel:[-190,'#f0e8d8','#ffd24a','#e8c8a0',0],tavern:[-252,'#6a3a1a','#c9a24a','#e0a878','#3a2010'],squire:[-336,'#6a6a7a','#8a2a24','#d0a080','#4a4a5a']};
 const NPCF={};for(const k in NPCS)NPCF[k]=[0,1].map(f=>npcSprite(NPCS[k][1],NPCS[k][2],NPCS[k][3],NPCS[k][4],f));
 // ---------- human townsfolk (48px, 3/4 view facing right) ----------
 function human(o,f){const c=cvs(32),g=c.getContext('2d');g.imageSmoothingEnabled=false;const {r,p}=PX(g);
@@ -2830,13 +2839,17 @@ function human(o,f){const c=cvs(32),g=c.getContext('2d');g.imageSmoothingEnabled
  if(o.grin){r(11,8+y0,7,4,sk[1]);r(12,6+y0,3,1,'#241810');r(16,6+y0,3,1,'#241810');r(13,9+y0,4,1,'#140c10');r(13,10+y0,4,1,'#f4f0e8');p(14,4+y0,sk[2]);p(15,5+y0,sk[2]);}
  if(o.collar){r(11,12+y0,2,2,shd(o.top,1.45));r(14,12+y0,2,2,shd(o.top,.72));p(13,13+y0,shd(o.top,.55));}
  if(o.spec){r(12,7+y0,6,1,gd[1]);p(14,7+y0,'#140c10');p(17,7+y0,'#140c10');}
- if(o.hair){const H=B(o.hair);if(o.hs!='bald'){r(11,3+y0,8,2,H[1]);r(11,3+y0,8,1,H[2]);r(11,5+y0,2,3,H[1]);
-  if(o.hs=='long'){r(10,6+y0,2,7,H[1]);r(10,6+y0,1,7,H[0]);r(10,12+y0,2,2,H[0]);}
-  if(o.hs=='bun'){r(9,2+y0,3,3,H[1]);p(9,2+y0,H[2]);}}
- else{r(12,4+y0,2,2,H[1]);}}
+ if(o.hair){const H=B(o.hair);if(o.hs=='neck'){r(10,6+y0,2,6,H[1]);r(10,6+y0,1,6,H[0]);r(10,11+y0,2,2,H[0]);r(17,6+y0,2,5,H[1]);r(18,6+y0,1,5,H[2]);}
+  else if(o.hs!='bald'){r(11,3+y0,8,2,H[1]);r(11,3+y0,8,1,H[2]);r(11,5+y0,2,3,H[1]);
+   if(o.hs=='long'){r(10,6+y0,2,7,H[1]);r(10,6+y0,1,7,H[0]);r(10,12+y0,2,2,H[0]);}
+   if(o.hs=='bun'){r(9,2+y0,3,3,H[1]);p(9,2+y0,H[2]);}}
+  else{r(12,4+y0,2,2,H[1]);}}
  if(o.beard){const Bd=B(o.beard);r(12,10+y0,7,3,Bd[1]);r(13,9+y0,5,1,Bd[2]);r(12,12+y0,7,1,Bd[0]);p(14,11+y0,'#7a3830');}
  if(o.tonsure){r(11,3+y0,8,1,sk[2]);r(11,4+y0,2,3,B(o.tonsure)[1]);r(16,4+y0,2,2,B(o.tonsure)[0]);}
  if(o.hat=='tall'){const Ht=B('#241c30');blk(11,2,8,2,Ht);blk(12,-2,6,4,Ht);r(12,0+y0,6,1,gd[1]);}
+ if(o.hat=='back'){const Ht=B('#1a1a1e');r(8,1+y0,8,4,Ht[1]);r(8,1+y0,8,1,Ht[2]);r(8,4+y0,3,3,Ht[0]);r(12,4+y0,7,2,'#2c2c34');r(12,4+y0,7,1,'#5a5a64');r(15,4+y0,3,2,'#e6eaf0');r(16,4+y0,1,2,'#14161c');p(15,4+y0,'#a8b0b8');}
+ if(o.glasses=='brow'){r(12,6+y0,3,2,'#14141a');r(16,6+y0,3,2,'#14141a');p(15,6+y0,'#d8d4cc');r(12,8+y0,3,1,'#d8d2c6');r(16,8+y0,3,1,'#d8d2c6');if(!blink){p(13,7+y0,'#eef2ea');p(14,7+y0,'#2a4a3c');p(16,7+y0,'#eef2ea');p(17,7+y0,'#2a4a3c');}}
+ if(o.smile){r(13,10+y0,3,1,'#a86058');}
  if(o.hood){const Hd=B(o.hood);r(10,2+y0,11,3,Hd[1]);r(10,2+y0,11,1,Hd[2]);r(10,5+y0,2,8,Hd[0]);r(10,11+y0,8,2,Hd[1]);}
  if(o.veil){const V=B(o.veil);r(11,2+y0,9,2,V[1]);r(11,2+y0,9,1,gd[2]);r(10,4+y0,2,6,V[0]);}
  blk(19,13,3,6,o.bare?sk:cl);if(o.bare)r(19,13+y0,3,2,cl[1]);
@@ -2859,11 +2872,12 @@ const NPCH={smith:{skin:'#d8a07a',hair:'#3a2418',hs:'short',beard:'#3a2418',top:
  herb:{skin:'#e0b490',hair:'#7a4a20',hs:'bun',top:'#c8b890',robe:1,apron:'#3a6a2a',prop:'basket'},
  chapel:{skin:'#d8a882',tonsure:'#5a3a20',top:'#6a4a2a',robe:1,belt:'#e8dcc0',trim:null,prop:'symbol'},
  tavern:{skin:'#e4b090',grin:1,top:'#1a2744',collar:1,apron:'#a08860',legs:'#2a2428',prop:'mug'},
- squire:{skin:'#e8c0a0',hair:'#c89a5a',hs:'short',top:'#6a5a4a',armor:1,tabard:'#8a2a24',legs:'#4a3a2a',prop:'spear'}};
+ squire:{skin:'#e8c0a0',hair:'#c89a5a',hs:'short',top:'#6a5a4a',armor:1,tabard:'#8a2a24',legs:'#4a3a2a',prop:'spear'},
+ calder:{skin:'#e4b898',hair:'#6b4428',hs:'neck',beard:'#6b4428',smile:1,glasses:'brow',hat:'back',top:'#c6a36a',legs:'#4a3424',belt:'#3a2818',boot:'#2a1c14'}};
 for(const k in NPCH)NPCF[k]=[0,1,2,3].map(f=>human(NPCH[k],f));
 
 function spriteFoot(img){if(img._foot!=null)return img._foot;const W=img.width,d=img.getContext('2d').getImageData(0,0,W,W).data;let bot=W-1;for(let y=W-1;y>=0;y--){for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>16){bot=y;y=-1;break}}img._foot=bot;return bot}
-function hubNPCs(X,Y,Zh,t){const on=new Set(['smith','bank','shrine','lib','gate',...townOn().map(b=>b.id)]);cx.imageSmoothingEnabled=false;const ps=16,pd=ps*Zh|0,kImg=SPF.bk.idle[0],kFoot=spriteFoot(kImg),ground= (Y(HGY-ps)|0)+Math.round(kFoot/(kImg.width-1)*pd);for(const k in NPCS){if(!on.has(k))continue;const x=NPCS[k][0],phase=(t/12+Math.abs(x)/9|0);let fi=[0,1,2,1][phase%4];if(((t/48+Math.abs(x))|0)%8==0)fi=3;if(NPCH[k].swing&&(t%120)<52)fi=[0,1,2,1][(t/7|0)%4];const img=NPCF[k][fi],s=16,dw=s*Zh|0,nFoot=spriteFoot(img),dy=ground-Math.round(nFoot/(img.width-1)*dw),dx=X(x)|0;cx.save();cx.imageSmoothingEnabled=false;if(HB2.x<x){cx.translate(dx+dw,dy);cx.scale(-1,1);cx.drawImage(img,0,0,dw,dw);}else cx.drawImage(img,dx,dy,dw,dw);cx.restore();
+function hubNPCs(X,Y,Zh,t){const on=new Set(['calder','smith','bank','shrine','lib','gate',...townOn().map(b=>b.id)]);cx.imageSmoothingEnabled=false;const ps=16,pd=ps*Zh|0,kImg=SPF.bk.idle[0],kFoot=spriteFoot(kImg),ground= (Y(HGY-ps)|0)+Math.round(kFoot/(kImg.width-1)*pd);for(const k in NPCS){if(!on.has(k))continue;const x=NPCS[k][0],phase=(t/12+Math.abs(x)/9|0);let fi=[0,1,2,1][phase%4];if(((t/48+Math.abs(x))|0)%8==0)fi=3;if(NPCH[k].swing&&(t%120)<52)fi=[0,1,2,1][(t/7|0)%4];const img=NPCF[k][fi],s=16,dw=s*Zh|0,nFoot=spriteFoot(img),dy=ground-Math.round(nFoot/(img.width-1)*dw),dx=X(x)|0;cx.save();cx.imageSmoothingEnabled=false;if(HB2.x<x){cx.translate(dx+dw,dy);cx.scale(-1,1);cx.drawImage(img,0,0,dw,dw);}else cx.drawImage(img,dx,dy,dw,dw);cx.restore();
   if(k=='smith'&&fi==2){cx.fillStyle='#ffe27a';cx.fillRect(X(x+15)|0,Y(HGY-20)|0,Zh|0,Zh|0);cx.fillStyle='#ff9a3a';cx.fillRect(X(x+17)|0,Y(HGY-22)|0,Zh|0,Zh|0);}}}
 
 applyTouch();MC.legend=!TC.on;
