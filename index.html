@@ -47,7 +47,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-09-calder';
+const BUILD='2026-11-10-calder-look';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -1214,6 +1214,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'calderlook',date:'Nov 10, 2026',t:'Calder, a little clearer',d:'Calder Voss has a fair, warm complexion on his face, ears, neck, and hands, so he reads the way he looks on the lane. The backwards cap, the glasses, the beard, and the tan tunic are the same.'},
  {id:'calder',date:'Nov 9, 2026',t:'A friend in the lane',d:'Calder Voss keeps watch just west of the blacksmith, where a new heir starts. Press E to hear him. He sells nothing, and he does not follow you into the castle. If you have not met him before, that is fine. An older save does not need to know his name.'},
  {id:'welcome',date:'Nov 9, 2026',t:'A clearer first step',d:'Quick Start shows the heir, and the traits they carry, before the gate. The same card appears when a run ends and you take the next heir. The first fight is one foe, and a fairy challenge is not waiting in the opening rooms. Left click attacks. A foe’s name is visible before you hit them. The first rank of each Soul Forge rite costs 24 Soul Coins; later ranks are unchanged, and ranks you already own stay owned. Locked houses in Ashenmere have their names, and what opens them.'},
  {id:'keeps',date:'Nov 9, 2026',t:'The throne keeps its master',d:'Leave a throne or a castle wing and come back, and the same master is waiting, still at the health you left them. Reloading no longer swaps in a fresh one. Esc in a shop now pauses on top of the shop, the same as the Menu button, with a way back to that counter. The Skip button, the town controls, and the phone menu no longer sit on top of each other, and your heir’s name stays readable on a narrow screen.'},
@@ -2837,14 +2838,14 @@ function drawGhosts(){if(!L||!L.ghosts||!L.ghosts.length)return;const X=x=>Math.
 {const _dl=drawLevel;drawLevel=function(){_dl();drawGhosts();nearLayer()}}
 // town NPCs
 function npcSprite(c1,c2,skin,hat,f){const c=cvs(16),{r,p,b}=PX(c.getContext('2d')),br=f%2;b(5,7+br,6,7-br,c1);r(5,12,6,1,c2);r(5,14,2,2,'#2a1810');r(9,14,2,2,'#2a1810');b(5,2+br,6,5,skin);p(6,4+br,'#120c18');p(9,4+br,'#120c18');if(hat)r(4,1+br,8,2,hat);r(3,8+br,2,4,c1);r(11,8+br,2,4,c1);return hdify(outline(c))}
-const NPCS={calder:[8,'#c6a36a','#4a3424','#e4b898',0],smith:[86,'#6a4a3a','#3a2a20','#e0a878','#2a2a30'],bank:[184,'#2a3a6a','#ffd24a','#e8c8a0','#1a1a2a'],shrine:[300,'#e8e0f0','#b05ae0','#e8c8a0',0],lib:[362,'#3a2a50','#c9a24a','#d8b890','#3a2a50'],gate:[492,'#1a1020','#3a1a30','#5a4a5a','#120810'],herb:[-112,'#3a6a2a','#c8e06a','#d8b890','#2a4a1a'],chapel:[-190,'#f0e8d8','#ffd24a','#e8c8a0',0],tavern:[-252,'#6a3a1a','#c9a24a','#e0a878','#3a2010'],squire:[-336,'#6a6a7a','#8a2a24','#d0a080','#4a4a5a']};
+const NPCS={calder:[8,'#c6a36a','#4a3424','#f8d0bc',0],smith:[86,'#6a4a3a','#3a2a20','#e0a878','#2a2a30'],bank:[184,'#2a3a6a','#ffd24a','#e8c8a0','#1a1a2a'],shrine:[300,'#e8e0f0','#b05ae0','#e8c8a0',0],lib:[362,'#3a2a50','#c9a24a','#d8b890','#3a2a50'],gate:[492,'#1a1020','#3a1a30','#5a4a5a','#120810'],herb:[-112,'#3a6a2a','#c8e06a','#d8b890','#2a4a1a'],chapel:[-190,'#f0e8d8','#ffd24a','#e8c8a0',0],tavern:[-252,'#6a3a1a','#c9a24a','#e0a878','#3a2010'],squire:[-336,'#6a6a7a','#8a2a24','#d0a080','#4a4a5a']};
 const NPCF={};for(const k in NPCS)NPCF[k]=[0,1].map(f=>npcSprite(NPCS[k][1],NPCS[k][2],NPCS[k][3],NPCS[k][4],f));
 // ---------- human townsfolk (48px, 3/4 view facing right) ----------
 function human(o,f){const c=cvs(32),g=c.getContext('2d');g.imageSmoothingEnabled=false;const {r,p}=PX(g);
  const y0=f==1?-1:0,blink=f===3,lift=o.swing?[0,-2,-4,-2][f]:0;
  const B=hex=>[shd(hex,.52),hex,shd(hex,1.38)];
  const blk=(x,y,w,h,C)=>{x=x|0;y=(y+y0)|0;w=w|0;h=h|0;if(w<1||h<1)return;r(x,y,w,h,C[1]);r(x,y,w,1,C[2]);r(x,y+h-1,w,1,C[0]);r(x+w-1,y,1,h,C[0]);};
- const sk=B(o.skin),cl=B(o.top),lg=B(o.legs||'#3a2a20'),bt=B(o.boot||'#1a120c'),gd=B('#c9a24a'),mt=B('#8a909c');
+ const sk=o.skinSh?[o.skinSh[0],o.skin,o.skinSh[1]]:B(o.skin),cl=B(o.top),lg=B(o.legs||'#3a2a20'),bt=B(o.boot||'#1a120c'),gd=B('#c9a24a'),mt=B('#8a909c');
  blk(7,14,3,6,o.bare?sk:cl);r(7,19+y0,3,2,sk[1]);
  if(!o.robe){blk(10,19,3,7,lg);blk(15,19,3,7,lg);blk(9,25,5,3,bt);blk(14,25,5,3,bt);}
  else{for(let i=0;i<14;i+=2){const w=7+(i>>1),x=(12-(w>>1))|0,yy=(12+y0+i)|0;r(x,yy,w,2,i>10?cl[0]:cl[1]);p(x,yy,cl[0]);p(x+w-1,yy,cl[2]);}blk(10,26,3,2,bt);blk(14,26,3,2,bt);}
@@ -2863,8 +2864,9 @@ function human(o,f){const c=cvs(32),g=c.getContext('2d');g.imageSmoothingEnabled
   else if(o.hs!='bald'){r(11,3+y0,8,2,H[1]);r(11,3+y0,8,1,H[2]);r(11,5+y0,2,3,H[1]);
    if(o.hs=='long'){r(10,6+y0,2,7,H[1]);r(10,6+y0,1,7,H[0]);r(10,12+y0,2,2,H[0]);}
    if(o.hs=='bun'){r(9,2+y0,3,3,H[1]);p(9,2+y0,H[2]);}}
-  else{r(12,4+y0,2,2,H[1]);}}
- if(o.beard){const Bd=B(o.beard);r(12,10+y0,7,3,Bd[1]);r(13,9+y0,5,1,Bd[2]);r(12,12+y0,7,1,Bd[0]);p(14,11+y0,'#7a3830');}
+  else{r(12,4+y0,2,2,H[1]);}
+  if(o.skinSh&&o.hs=='neck'){p(9,7+y0,o.skinSh[0]);p(9,8+y0,o.skin);}}
+ if(o.beard){const Bd=o.beardSh?[o.beardSh[0],o.beard,o.beardSh[1]]:B(o.beard);r(12,10+y0,7,3,Bd[1]);r(13,9+y0,5,1,Bd[2]);r(12,12+y0,7,1,Bd[0]);p(14,11+y0,'#7a3830');}
  if(o.tonsure){r(11,3+y0,8,1,sk[2]);r(11,4+y0,2,3,B(o.tonsure)[1]);r(16,4+y0,2,2,B(o.tonsure)[0]);}
  if(o.hat=='tall'){const Ht=B('#241c30');blk(11,2,8,2,Ht);blk(12,-2,6,4,Ht);r(12,0+y0,6,1,gd[1]);}
  if(o.hat=='back'){const Ht=B('#1a1a1e');r(8,1+y0,8,4,Ht[1]);r(8,1+y0,8,1,Ht[2]);r(8,4+y0,3,3,Ht[0]);r(12,4+y0,7,2,'#2c2c34');r(12,4+y0,7,1,'#5a5a64');r(15,4+y0,3,2,'#e6eaf0');r(16,4+y0,1,2,'#14161c');p(15,4+y0,'#a8b0b8');}
@@ -2893,7 +2895,7 @@ const NPCH={smith:{skin:'#d8a07a',hair:'#3a2418',hs:'short',beard:'#3a2418',top:
  chapel:{skin:'#d8a882',tonsure:'#5a3a20',top:'#6a4a2a',robe:1,belt:'#e8dcc0',trim:null,prop:'symbol'},
  tavern:{skin:'#e4b090',grin:1,top:'#1a2744',collar:1,apron:'#a08860',legs:'#2a2428',prop:'mug'},
  squire:{skin:'#e8c0a0',hair:'#c89a5a',hs:'short',top:'#6a5a4a',armor:1,tabard:'#8a2a24',legs:'#4a3a2a',prop:'spear'},
- calder:{skin:'#e4b898',hair:'#6b4428',hs:'neck',beard:'#6b4428',smile:1,glasses:'brow',hat:'back',top:'#c6a36a',legs:'#4a3424',belt:'#3a2818',boot:'#2a1c14'}};
+ calder:{skin:'#f8d0bc',skinSh:['#e7b8a4','#fff1e6'],hair:'#6b4428',hs:'neck',beard:'#6b4428',beardSh:['#4a301c','#8a5634'],smile:1,glasses:'brow',hat:'back',top:'#c6a36a',legs:'#4a3424',belt:'#3a2818',boot:'#2a1c14'}};
 for(const k in NPCH)NPCF[k]=[0,1,2,3].map(f=>human(NPCH[k],f));
 
 function spriteFoot(img){if(img._foot!=null)return img._foot;const W=img.width,d=img.getContext('2d').getImageData(0,0,W,W).data;let bot=W-1;for(let y=W-1;y>=0;y--){for(let x=0;x<W;x++)if(d[(y*W+x)*4+3]>16){bot=y;y=-1;break}}img._foot=bot;return bot}
