@@ -47,7 +47,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-13-boons';
+const BUILD='2026-11-13-todd-event';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -404,7 +404,7 @@ function drawMap(){cx.fillStyle='#17131d';cx.fillRect(0,0,VW,VH);
  cx.font=`bold ${Math.max(16,Math.min(30,VW/40))}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#f2c447';cx.fillText(`ACT ${act}: ${ACTN[act-1].toUpperCase()}`,VW/2,78);
  const sn=av[sel];if(sn){cx.font='bold 16px "Courier New",monospace';cx.fillStyle='#e8e0d0';cx.fillText(`> ${NODE[sn.t].n.toUpperCase()} <`,VW/2,VH-40)}
  cx.textAlign='left';cx.font='bold 13px "Courier New",monospace';let ly=60;for(const t of['M','E','?','T','R','$','B']){cx.drawImage(nodeIcon(t),VW-170,ly,24,24);cx.fillStyle='#b8a888';cx.fillText(NODE[t].n.toUpperCase(),VW-140,ly+17);ly+=30}}
-function chooseNode(n){bankCoins();if(!avail().includes(n))return;if(pos)pos.done=true;n.done=true;pos=n;sel=0;run.floors++;if(has('mapr')&&run.floors%3==0&&P.hp<P.mhp){heal(1);log('Pilgrim’s Map: +1 Heart','#6fc8ff')}
+function chooseNode(n){if(pos&&pos.todd&&!pos.todd.done){toddOffer(pos);return}bankCoins();if(!avail().includes(n))return;if(pos)pos.done=true;n.done=true;pos=n;sel=0;run.floors++;if(has('mapr')&&run.floors%3==0&&P.hp<P.mhp){heal(1);log('Pilgrim’s Map: +1 Heart','#6fc8ff')}
  try{DIAG.note('map','Node '+n.t)}catch(e){}
  if(n.t=='M'||n.t=='E'||n.t=='B')startCombat(n.t);else if(n.t=='T')treasure();else if(n.t=='R')rest();else if(n.t=='$')shop();else event();hud();saveRun('node')}
 // ---------- castle floors: interconnected rooms ----------
@@ -1016,7 +1016,12 @@ const EVENTS=[
 EVENTS.push(()=>{const id=randRelic(['uncommon','rare']);modal('The Blood Altar','A relic rests on a blood-stained altar. Dark whispers promise power.'+(id?`<br>${relImg(id,32)} <b>${RB[id].n}</b> <small>${RB[id].d}</small>`:''),[{t:'Take it (lose 1 Max Heart)',dis:!id||P.mhp<=2,f:()=>{P.mhp--;P.hp=Math.min(P.hp,P.mhp);gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
 const cursedCard=id=>id?`<div style="margin:6px 0;border:3px solid ${RAR.cursed};background:#2a1018;padding:6px">${relImg(id,32)} <b style="color:${RAR.cursed}">${RB[id].n}</b> <small style="color:${RAR.cursed}">CURSED</small><br><small>${relDesc(RB[id])}</small></div>`:'';
 EVENTS.push(()=>{const id=randRelic(['cursed']);if(!id)return EVENTS[0]();modal('The Cursed Altar','A black altar hums with forbidden power. A relic lies upon it, wrapped in red chains. Power always has a price...'+cursedCard(id),[{t:'Take the cursed relic',f:()=>{gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
-function event(){EVENTS[R(EVENTS.length)]()}
+const TODD_CHANCE=.25;
+function toddOffer(n){const deal=n&&n.todd;if(!deal||deal.done||!RB[deal.id])return;const lethal=!(P&&P.hp>1);
+ modal('Todd\u2019s Wager',`Todd is waiting where the road bends. "One heart, knight. The relic is cursed, and I will not take the last one you have."`+cursedCard(deal.id)+`<br><small>You have ${P.hp} Heart${P.hp==1?'':'s'}. Declining costs nothing.</small>`,[
+  {t:lethal?'One heart would end you':`Pay 1 Heart for ${RB[deal.id].n}`,dis:!!lethal,p:!lethal,f:()=>{if(!(P.hp>1)||n.todd!==deal||deal.done)return;P.hp--;deal.done=1;gainRelic(deal.id);log('Todd takes a heart and slides the relic across.','#ff5a5a');closeModal();saveRun('todd')}},
+  {t:'Decline',p:!!lethal,f:()=>{deal.done=1;log('Todd shrugs. The road is still yours.','#c8bca0');closeModal();saveRun('todd')}}])}
+function event(){const n=pos;if(n&&n.t=='?'&&!n.todd&&Math.random()<TODD_CHANCE){const id=randRelic(['cursed']);if(id)n.todd={id,done:0}}if(n&&n.todd&&!n.todd.done)return toddOffer(n);EVENTS[R(EVENTS.length)]()}
 // ---------- modal ----------
 let modalBtns=[];
 function modal(t,body,btns,wide){$('box').classList.remove('heirc');if(mode!='combat'&&mode!='title')mode='modal';const bx=$('box'),menu=wide&&wide.menu,ov=$('ov').style;bx.dataset.menu=menu?'1':'';ov.alignItems=menu?'flex-end':'center';ov.background=menu?'transparent':'';ov.paddingBottom=menu?'7vh':'';bx.style.width=menu?'340px':wide?'min(980px,96vw)':'';bx.innerHTML=menu?`<div class="modal-body">${body}</div>`:`<h2>${t}</h2><div class="modal-body">${body}</div>`;
@@ -1203,7 +1208,7 @@ function bossSnap(L0){if(!L0||!L0.mobs)return null;const b=L0.mobs.filter(e=>e&&
 function restoreBoss(r){const snap=r&&r.bossHp;if(!snap||!L||!L.mobs)return;let n=0;for(const s of snap){const key=s.k||s.s,e=L.mobs.find(m=>(m.boss||m.minboss)&&m.s===key&&!m._rs);if(!e)continue;e._rs=1;n++;const mhp=Math.max(1,Math.round(+s.mhp)||1),hp=Math.max(1,Math.min(mhp,Math.round(+s.hp)||mhp));e.hp=hp;e.mhp=mhp;e.hp15=1;if(s.phase)e.phase=s.phase;if(s.dread){e.dread=1;if(s.n)e.n=s.n;if(s.dmg)e.dmg=s.dmg;if(s.xp)e.xp=s.xp}}if(n)r.bossHp=null}
 function serRun(){if(!P||!run||P.dead||!MAP)return null;
  const nodes=[];for(const row of MAP.nodes)for(const n of row)if(n)nodes.push(n);nodes.push(MAP.boss);const nid=new Map(nodes.map((n,i)=>[n,i]));
- const map={ROWS:MAP.ROWS,COLS:MAP.COLS,nodes:nodes.map(n=>({r:n.r,c:n.c,t:n.t,done:n.done,jx:n.jx,jy:n.jy,next:n.next.map(x=>nid.get(x))})),boss:nid.get(MAP.boss)};
+ const map={ROWS:MAP.ROWS,COLS:MAP.COLS,nodes:nodes.map(n=>{const o={r:n.r,c:n.c,t:n.t,done:n.done,jx:n.jx,jy:n.jy,next:n.next.map(x=>nid.get(x))};if(n.todd)o.todd=n.todd;return o}),boss:nid.get(MAP.boss)};
  const ctx=mode=='combat'&&F?'combat':'map';let floor=null;
  if(ctx=='combat'){const rid=new Map(F.rooms.map((r,i)=>[r,i]));floor={kind:F.kind,cur:rid.get(F.cur),start:rid.get(F.start),boss:rid.get(F.boss),rooms:F.rooms.map(r=>{const o={gx:r.gx,gy:r.gy,kind:r.kind,seen:r.seen,known:r.known,doors:{},drill:r.drill?1:0};if(r.dreadPrize)o.dreadPrize=r.dreadPrize;for(const d in r.doors)o.doors[d]=rid.get(r.doors[d]);
   const snap=bossSnap(r.L);if(snap)o.bossHp=snap;if(r.L&&r.L.cleared){const l=r.L;o.L={w:l.w,h:l.h,m:l.m,mx:l.mx,props:(l.props||[]).filter(p=>p&&!p.dead),chests:l.chests,items:l.items||[],coins:(l.coins||[]).filter(c=>c&&!c.got),hearts:(l.hearts||[]).filter(c=>c&&!c.got),lore:l.lore&&!l.lore.got?l.lore:null,cleared:true,kind:l.kind,fairy:l.fairy,portal:l.portal}}return o})}}
@@ -1222,6 +1227,7 @@ function loadRun(){const s=peekSave();if(!s)return false;try{
   F={kind:fl.kind,rooms,grid:grid2,start:rooms[fl.start],boss:rooms[fl.boss],cur:null};mode='combat';enterRoom(rooms[fl.cur],null)}
  else mode='map';
  if(run&&run.shop&&Array.isArray(run.shop.items)){try{shop(run.shop)}catch(e){try{DIAG.fault('shop',e)}catch(e2){}}}
+ if(mode=='map'&&pos&&pos.todd&&!pos.todd.done)setTimeout(()=>toddOffer(pos),0);
  log(`${P.heir.name} resumes the journey.`,'#f2c447');hud();try{DIAG.note('load','Resumed '+(s.ctx||''))}catch(e){}return true}catch(err){try{DIAG.fault('load',err)}catch(e){}console.warn('load failed',err);clearSave();P=null;return false}}
 addEventListener('beforeunload',()=>saveRun('unload'));document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')saveRun('hidden')});
 let lastModal=null,underModal=null;
@@ -1251,6 +1257,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'todd',date:'Nov 13, 2026',t:'Todd on the road',d:'About one unknown room in four is Todd. He offers one cursed relic for a single heart, and you may decline. He will not take the heart if it would end you. Leave the bargain open and it is waiting in that same room when you return.'},
  {id:'boons',date:'Nov 13, 2026',t:'A boon on the weapon',d:'Each weapon can carry one boon, so two heirs with the same blade need not fight the same way. The longsword burns for 3, the bow passes through, the great axe splashes 2, the spear poisons for 4, the halberd slows and tugs, the greatsword bleeds for 3, and the ultra greatsword shocks nearby foes for 3. A boon is only offered for the weapon in your hand. Set that weapon down and the boon sleeps until you take it up again.'},
  {id:'readable',date:'Nov 13, 2026',t:'A readable fight',d:'A Dread’s cursed relic waits in the room where that Dread died, and only after that room is safe. It does not open over a later fight. Ability names stay short enough to read on a phone, and the full name is on the button. The map names what a room pays before you step in. An ordinary foe flashes orange for a moment before a body hit. A dash shrugs off hits for 9 frames. The heir card names the cheapest Soul Forge rank you have not bought.'},
  {id:'polish',date:'Nov 13, 2026',t:'A fairer forge, a clearer bar',d:'The control hint stays off the ability buttons, and each button keeps its own name. The first fight is the only way forward from the room where you arrive. A boss’s health is written as a number on the bar. The second Soul Forge rank is a modest step up from the first. Later ranks climb sharply. Ranks you already own stay owned.'},
@@ -1782,7 +1789,7 @@ drawMap=function(){const key=act+':'+(pos?pos.r+','+pos.c:'s')+':'+(MAP.nodes.le
  nodeXY=[];for(const n of all.concat([MAP.boss])){const[x,y]=nxy(n),ss=s*(n.t=='B'?2:1);if(x<-ss*2||x>VW+ss*2||y<-ss*2||y>VH+ss*2){nodeXY.push([n,x,y,ss]);continue}const isA=av.includes(n),isS=isA&&av[sel]==n;
   if(isA){const pu=Math.round(Math.sin(tick/8)*2*z+(isS?6:3)*z);cx.fillStyle=isS?'#f2c447':'#8a6a3a';cx.fillRect(x-ss/2-pu,y-ss/2-pu,ss+pu*2,ss+pu*2);cx.fillStyle='#17131d';cx.fillRect(x-ss/2-pu+k,y-ss/2-pu+k,ss+pu*2-2*k,ss+pu*2-2*k)}
   cx.globalAlpha=n.done||isA||n.t=='B'?1:.55;cx.drawImage(nodeIcon(n.t),Math.round(x-ss/2),Math.round(y-ss/2),ss,ss);cx.globalAlpha=1;
-  if(!n.done){const pay=NODE_PAY[n.t]||'';cx.font=`bold ${Math.max(8,Math.round(9*z))}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#120c18';const py=y+ss/2+Math.max(12,Math.round(13*z));cx.fillText(pay,x+1,py+1);cx.fillStyle=isS?'#ffd24a':'#ffe7a8';cx.fillText(pay,x,py)}
+  if(!n.done||(n.todd&&!n.todd.done)){const pay=n.todd&&!n.todd.done?'Todd':(NODE_PAY[n.t]||'');cx.font=`bold ${Math.max(8,Math.round(9*z))}px "Courier New",monospace`;cx.textAlign='center';cx.fillStyle='#120c18';const py=y+ss/2+Math.max(12,Math.round(13*z));cx.fillText(pay,x+1,py+1);cx.fillStyle=isS?'#ffd24a':'#ffe7a8';cx.fillText(pay,x,py)}
   if(n.done&&n!=pos){cx.fillStyle='#c9a45a';cx.fillRect(x-ss/2,y+ss/2+2,ss,k)}if(n==pos&&P)cx.drawImage(SP[P.ch.s],Math.round(x+ss/2),Math.round(y-ss/2),Math.round(s*.8),Math.round(s*.8));nodeXY.push([n,x,y,ss])}
  const sn=av[sel],T=TC.on;cx.textAlign='center';cx.font=`bold ${T?13:Math.max(16,Math.min(28,VW/42))}px "Courier New",monospace`;cx.fillStyle='#120c18';const tt=`ACT ${act}: ${ACTN[act-1].toUpperCase()}`;
  if(T){cx.fillStyle='rgba(10,6,16,.75)';const line=tt+(sn?`  \u00b7  > ${NODE[sn.t].n.toUpperCase()} · ${NODE_PAY[sn.t].toUpperCase()} <  \u00b7  TAP AGAIN / GO`:'');const w=cx.measureText(line).width+20,mx0=290,mx1=VW-130,mc=(mx0+mx1)/2,yb=w>mx1-mx0?VH-90:VH-34;cx.fillRect((w>mx1-mx0?VW/2:mc)-w/2,yb,w,24);cx.fillStyle='#f2c447';cx.fillText(line,w>mx1-mx0?VW/2:mc,yb+17)}
