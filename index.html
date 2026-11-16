@@ -47,7 +47,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-13-pact';
+const BUILD='2026-11-16-unstick';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -608,7 +608,12 @@ function enterRoom(r,side){window._loreHook=1;bankCoins();F.cur=r;r.seen=1;for(c
   else if(r.kind=='normal'||r.kind=='fairy'){if(r.drill){const e=spawn(pool[0]||'rat',Math.max(8,Math.floor(L.w*.62)),.55);e.hp=e.mhp=6;log('One foe, so you can learn the swing. Left click attacks.','#f2c447')}else{for(let i=0,n=RX.count();i<n;i++)spawn(pool[R(pool.length)],RX.far(far),s);if(r.kind=='fairy'){L.fairy={ok:true};L.banner={t:200,s:'FAIRY CHALLENGE: CLEAR THE ROOM WITHOUT TAKING DAMAGE',c:'#6fe8ff'};L.chests.push({x:(L.mx+4)*8,y:floorY(L.mx+4,8)??groundY(L.mx+4,8),w:8,h:8,kind:'fairy'});log('FAIRY CHEST: clear this room without taking damage!','#6fe8ff')}}if(!meta.brightHint){meta.brightHint=1;saveMeta();log('The crypt is dim. Settings, then Display, has a brightness slider.','#c8bca0')}}
   else if(r.kind=='boss'){const keep=r.bossHp,pin=pinnedMaster(keep);if(F.kind=='D'){const b=spawn('demon',L.w-10,1+.2*(meta.gen>3));b.timer=120;b.y-=30;sfx('roar');if(!keep)bossTalk('demon',()=>{closeModal();mode='combat'})}else if(F.kind=='B'){const b=spawn(BOSSES[act-1],L.w-10,1);b.timer=90;sfx('roar')}else if(F.kind=='E'){const b=raiseBoss(spawn(pin||ELITE[act-1],L.w-10,s*1.2,1));b.minboss=1;spawn(pool[R(pool.length)],far(),s);spawn(pool[R(pool.length)],far(),s)}else{const b=raiseBoss(spawn(pin||pool[R(pool.length)],L.w-10,s*1.3,1));b.minboss=1;spawn(pool[R(pool.length)],far(),s)}
    if(keep)restoreBoss(r);log(F.kind=='D'?'The Demon Lord awaits upon his throne!':F.kind=='B'?`${ET[BOSSES[act-1]].n} awaits!`:'The throne room! Defeat its master.','#f06040')}}
- if(!L.cleared&&fresh&&r.kind!='boss')log('The doors slam shut!','#f88');if(fresh&&r.kind!='boss'&&r.kind!='start'&&typeof placeLore=='function')placeLore();hud();saveRun('room')}
+ if(!L.cleared&&fresh&&r.kind!='boss')log('The doors slam shut!','#f88');if(fresh&&r.kind!='boss'&&r.kind!='start'&&typeof placeLore=='function')placeLore();settlePlayer();hud();saveRun('room')}
+function settlePlayer(){if(!P||!L||freeBox(P.x,P.y,P.w,P.h))return;const w=P.w,h=P.h,wantX=P.x,wantY=P.y;let best=null,bd=1e9;
+ const consider=(x,y,pen)=>{if(!freeBox(x,y,w,h))return;const d=Math.abs(x-wantX)+Math.abs(y-wantY)*3+pen;if(d<bd){bd=d;best={x,y}}};
+ for(let tx=1;tx<L.w-1;tx++)for(let ty=1;ty<L.h-2;ty++){const below=tileAt(tx,ty+1);if(below!=1&&below!=2)continue;if(tileAt(tx,ty)==5)continue;const x=tx*8,y=(ty+1)*8-h;let spike=false;for(let ix=0;ix<w;ix+=4)if(tileAt(Math.floor((x+Math.min(ix,w-1))/8),Math.floor((y+h-1)/8))==5)spike=true;if(!spike)consider(x,y,0)}
+ if(!best)for(let tx=1;tx<L.w-1;tx++)for(let ty=1;ty<L.h-2;ty++)consider(tx*8,ty*8,80);
+ if(best){P.x=best.x;P.y=best.y;P.vx=P.vy=0;P.safe={x:P.x,y:P.y}}}
 function leaveFloor(){if(mode!='combat')return;run.floors++;
  if(F.kind=='B'){if(act==3)return win();mode='modal';const opts=[];for(let i=0;i<3;i++){const id=randRelic(['boss']);if(id&&!opts.includes(id))opts.push(id);else{const o=RELICS.find(r=>r.r=='boss'&&!has(r.id)&&!opts.includes(r.id));if(o)opts.push(o.id)}}
   const next=()=>{act++;startAct();modal(`Act ${act}`,`You descend deeper... into <b>${ACTN[act-1]}</b>.`,[{t:'Onward',f:closeModal,p:1}])};
@@ -1257,6 +1262,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'unstick',date:'Nov 16, 2026',t:'No more waking up in the wall',d:'Resuming a run no longer leaves you inside a brick counter or a low wall. If the spot you return to is solid, you are set down on the nearest open floor.'},
  {id:'pact',date:'Nov 13, 2026',t:'A harder road, if you want it',d:'At the gate you may take the Vow of Hardship. Ordinary foes and elites have 35% more health, and Soul Coins from the run are half again. Named bosses and the master of a throne room are left as they are. The vow is off unless you choose it, it lasts only for that run, and the corner of the screen says so while it is on.'},
  {id:'todd',date:'Nov 13, 2026',t:'Todd on the road',d:'About one unknown room in four is Todd. He offers one cursed relic for a single heart, and you may decline. He will not take the heart if it would end you. Leave the bargain open and it is waiting in that same room when you return.'},
  {id:'boons',date:'Nov 13, 2026',t:'A boon on the weapon',d:'Each weapon can carry one boon, so two heirs with the same blade need not fight the same way. The longsword burns for 3, the bow passes through, the great axe splashes 2, the spear poisons for 4, the halberd slows and tugs, the greatsword bleeds for 3, and the ultra greatsword shocks nearby foes for 3. A boon is only offered for the weapon in your hand. Set that weapon down and the boon sleeps until you take it up again.'},
