@@ -48,7 +48,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-16-resume-room';
+const BUILD='2026-11-16-save-lock';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -203,7 +203,25 @@ const NODE={M:{n:'Monster',s:'goblin'},E:{n:'Elite',s:'orc'},T:{n:'Treasure',s:'
 const NODE_PAY={M:'Gold',E:'Elite',T:'Relic',R:'Rest','$':'Shop','?':'Unknown',B:'Boss'};
 // ---------- meta progression (Manor, heirs, traits, spells) ----------
 const meta=JSON.parse(localStorage.getItem('crypt_meta')||'{}');meta.gold=meta.gold||0;meta.manor=meta.manor||{};meta.gen=meta.gen||1;meta.souls=meta.souls||0;meta.cu=meta.cu||{};
-const saveMeta=()=>localStorage.setItem('crypt_meta',JSON.stringify(meta));const ML=id=>meta.manor[id]||0;
+function saveMeta(){if(saveBlocked())return;try{localStorage.setItem('crypt_meta',JSON.stringify(meta))}catch(e){}}
+const ML=id=>meta.manor[id]||0;
+const TAB_ID=Math.random().toString(36).slice(2)+Date.now().toString(36);
+const LOCK_KEY='crypt_lock',REV_KEY='crypt_rev',LOCK_MS=4000;
+let writer=0,myRev=0,beatTimer=0,lockGen=0,saveBC=null;
+try{saveBC=new BroadcastChannel('fallenvow')}catch(e){}
+const RELEASED=(function(){try{return sessionStorage.getItem('crypt_releasing')||''}catch(e){return ''}})();
+try{sessionStorage.removeItem('crypt_releasing')}catch(e){}
+function readLock(){try{return JSON.parse(localStorage.getItem(LOCK_KEY)||'null')}catch(e){return null}}
+function lockHeldByOther(){const o=readLock();if(!o||o.id===TAB_ID||o.id===RELEASED)return false;return Date.now()-(+o.t||0)<LOCK_MS}
+function saveBlocked(){return !writer&&lockHeldByOther()}
+function diskRev(){let r=+(localStorage.getItem(REV_KEY)||0)||0;try{const s=JSON.parse(localStorage.getItem('crypt_run')||'null');if(s&&+s.rev>r)r=+s.rev}catch(e){}return r}
+function armBeat(){if(!beatTimer)beatTimer=setInterval(beat,1000)}
+function beat(){if(!writer)return;const o=readLock();if(o&&o.id!==TAB_ID&&o.id!==RELEASED&&(+o.gen||0)>=lockGen&&Date.now()-(+o.t||0)<LOCK_MS){dropLock('taken');return}try{localStorage.setItem(LOCK_KEY,JSON.stringify({id:TAB_ID,t:Date.now(),gen:lockGen}))}catch(e){}}
+function claimLock(){if(lockHeldByOther())return false;const o=readLock();const adopting=!!(o&&o.id===RELEASED);lockGen=Math.max(lockGen,+(o&&o.gen)||0)||1;if(adopting)lockGen++;writer=1;armBeat();beat();return true}
+function forceLock(){const o=readLock();lockGen=Math.max(lockGen,+(o&&o.gen)||0)+1;writer=1;armBeat();try{localStorage.setItem(LOCK_KEY,JSON.stringify({id:TAB_ID,t:Date.now(),gen:lockGen}))}catch(e){}try{saveBC&&saveBC.postMessage({k:'take',id:TAB_ID,gen:lockGen})}catch(e){}}
+function dropLock(why){const was=writer;writer=0;try{const o=readLock();if(o&&o.id===TAB_ID)localStorage.removeItem(LOCK_KEY)}catch(e){}if(was&&why){try{log('This tab will not save. The run is open in another tab.','#f2c447')}catch(e){}try{showReadOnly()}catch(e){}}}
+addEventListener('storage',e=>{if(e.key!==LOCK_KEY&&e.key!==REV_KEY&&e.key!=='crypt_run')return;if(!writer)return;if(lockHeldByOther()||diskRev()>myRev)dropLock('taken')});
+if(saveBC)saveBC.onmessage=e=>{const d=e.data||{};if(!d||d.id===TAB_ID||!writer)return;if(d.k==='take'||d.k==='lock'||(d.k==='rev'&&d.rev>myRev))dropLock('taken')};
 // Manor upgrade tree: tier = row, req = prerequisite id (needs level >=1)
 const MANOR=[
 {id:'vit',n:'Barracks',d:'+1 Max Heart per level',max:3,c:[40,90,160],tier:0},
@@ -355,7 +373,7 @@ const NAMES=['Aldric','Bram','Cedric','Edda','Gwen','Isolde','Kael','Mira','Osri
 function rollHeirs(){const sk=Object.keys(SPELLS),wk=Object.keys(WEAPONS);return[0,1,2].map(()=>{const pool=TRAITS.slice(),tr=[];for(let i=1+R(2);i>0;i--)tr.push(pool.splice(R(pool.length),1)[0].id);
  return{name:(R(2)?'Sir ':'Dame ')+NAMES[R(NAMES.length)]+' '+['I','II','III','IV','V','VI','VII','VIII','IX','X'][(meta.gen-1)%10],ch:'bk',traits:tr,spell:sk[R(sk.length)],weapon:wk[R(wk.length)]}})}
 // ---------- state ----------
-let mode='title',P,run,act,MAP,pos,sel=0,L,F,logs=[],nodeXY=[],tick=0,shake=0,hitstop=0;
+let mode='title',P,run,act,MAP,pos,sel=0,L,F,logs=[],nodeXY=[],tick=0,shake=0,hitstop=0,inFloor=0;
 const hasT=id=>P&&P.traits&&P.traits.includes(id);
 function applyBright(mono){let b=meta.bright==null?1:+meta.bright;if(!(b>=.5&&b<=1.5))b=1;const bits=[];if(Math.abs(b-1)>.004)bits.push('brightness('+b+')');if(mono)bits.push('grayscale(1)');const f=bits.join(' ');cv.style.filter=f;const gc=$('glc');if(gc)gc.style.filter=f}
 function setBright(v){let n=Math.round(+v);if(!(n>=50&&n<=150))n=100;meta.bright=n/100;const e=$('v_bright');if(e)e.textContent=n;applyBright(hasT('mono')&&(mode=='combat'||mode=='map'||mode=='hub'||mode=='cutscene'));saveMeta()}
@@ -370,12 +388,12 @@ function forge(ch='bk',back){if(back)forgeBack=back;const C=CHARS.find(c=>c.id==
   return `<div onclick="${ok?`buyCU('${C.id}','${u.id}')`:''}" style="cursor:${ok?'pointer':'default'};border:3px solid ${mx?'#6fe86f':ok?'#ffd24a':'#5a4630'};background:#1e1a34;padding:6px;opacity:${ok||mx?1:.6}"><b style="color:#ffd24a">${u.n}</b> <small>${'&#9632;'.repeat(lv)}${'&#9633;'.repeat(u.max-lv)}</small><br><small>${u.d}</small><br><small style="color:#e0a0ff">${mx?'MASTERED':c+' Soul Coins'}</small></div>`}).join('')+'</div>',[{t:'Back',p:1,f:()=>(forgeBack||mainMenu)()}])}
 let forgeBack=null;
 function buyCU(ch,id){const u=CUPS.find(x=>x.id==id),m=meta.cu[ch]=meta.cu[ch]||{},lv=m[id]||0,c=cuCost(u,lv);if(!u||lv>=u.max||meta.souls<c)return;meta.souls-=c;m[id]=lv+1;saveMeta();sfx('relic');log(`${u.n} is now rank ${lv+1} of ${u.max}.`,'#e0a0ff');forge(ch)}
-function newRun(h){HUBON=0;const ch=CHARS.find(c=>c.id==h.ch);
+function newRun(h){HUBON=0;inFloor=0;myRev=diskRev();const ch=CHARS.find(c=>c.id==h.ch);
  kitHeir(h);P={heir:h,ch,traits:h.traits,spell:h.spell,wep:h.weapon||'sword',x:0,y:0,w:6,h:8,ds:1,spd:1.5,vx:0,vy:0,face:1,a:ch.a+ML('str'),lv:1,xp:0,nx:10,pots:ch.pots+ML('pot')+CU('vial'),gold:0,wpn:0,arm:0,inv:0,dashT:0,dashCD:0,atkT:0,atkCD:0,swing:0,coy:0,buf:0,kbT:0,canDash:1,relics:[],airJ:1,dashId:0,mmp:10+3*ML('arc'),talCD:0,blockT:0,splCD:0,wardLeft:0};
  P.mhp=ch.mhp+ML('vit')+CU('hp');P.a+=CU('atk');P.mmp+=3*CU('mp');
  if(hasT('giant')){P.w=8;P.h=11;P.ds=1.35;P.mhp+=2}if(hasT('dwarf')){P.w=4;P.h=6;P.ds=.7;P.mhp-=1}if(hasT('glass')){P.a+=3;P.mhp-=2}if(hasT('fleet'))P.spd=1.9;if(hasT('weak'))P.a-=1;if(hasT('arcane'))P.mmp+=5;
  P.mhp=Math.max(2,P.mhp);P.hp=P.mhp;P.mp=P.mmp;
- run={kills:0,floors:0,rooms:0,time:0,goldGot:0,souls:0,vowBase:0,vowPaid:0,goldMul:1+ML('gold')*.1+h.traits.reduce((a,t)=>a+TB[t].g,0)};
+ run={kills:0,floors:0,rooms:0,time:0,goldGot:0,souls:0,vowBase:0,vowPaid:0,pending:null,goldMul:1+ML('gold')*.1+h.traits.reduce((a,t)=>a+TB[t].g,0)};
  applyBright(hasT('mono'));logs=[];act=1;closeModal();startAct();gainRelic(ch.relic);log(`${h.name} storms the Demon Lord’s castle with a ${QW().n}. Carry the Vow!`,'#f2c447')}
 function startAct(){MAP=genMap();pos=null;sel=0;mode='map';log(`Act ${act}: ${ACTN[act-1]}`,'#f2c447')}
 
@@ -562,7 +580,7 @@ SP.ground2=tileC(g=>{g.drawImage(SP.ground,0,0);g.fillStyle='#ffd24a';g.fillRect
 SP.ground3=tileC(g=>{g.drawImage(SP.ground,0,0);g.fillStyle='#e8ecf4';g.fillRect(9,6,3,1);g.fillRect(10,5,1,3)});
 const OPP={l:'r',r:'l',u:'d',d:'u'};
 function floorY(tx,h){for(let ty=L.h-2;ty>1;ty--)if(tileAt(tx,ty)==1&&tileAt(tx,ty-1)==0)return ty*8-h;return null}
-function startFloor(kind){const GW=5,GH=4,n=kind=='D'?2:kind=='B'?4+act:4+R(2)+act,grid={},K=(x,y)=>x+','+y,rooms=[];
+function startFloor(kind){inFloor=1;const GW=5,GH=4,n=kind=='D'?2:kind=='B'?4+act:4+R(2)+act,grid={},K=(x,y)=>x+','+y,rooms=[];
  const link=(a,b)=>{const dx=b.gx-a.gx,dy=b.gy-a.gy,d=dx==1?'r':dx==-1?'l':dy==1?'d':'u';a.doors[d]=b;b.doors[OPP[d]]=a};
  const add=(x,y,from)=>{const r={gx:x,gy:y,doors:{},kind:'normal',L:null,seen:0};grid[K(x,y)]=r;rooms.push(r);if(from)link(from,r);return r};
  const start=add(0,1+R(2));let t=0;while(rooms.length<n&&t++<800){const a=rooms[R(rooms.length)],[dx,dy]=[[1,0],[1,0],[1,0],[-1,0],[0,1],[0,-1]][R(6)],x=a.gx+dx,y=a.gy+dy;if(x<0||y<0||x>=GW||y>=GH||grid[K(x,y)])continue;add(x,y,a)}
@@ -616,10 +634,9 @@ function settlePlayer(){if(!P||!L||freeBox(P.x,P.y,P.w,P.h))return;const w=P.w,h
  if(!best)for(let tx=1;tx<L.w-1;tx++)for(let ty=1;ty<L.h-2;ty++)consider(tx*8,ty*8,80);
  if(best){P.x=best.x;P.y=best.y;P.vx=P.vy=0;P.safe={x:P.x,y:P.y}}}
 function leaveFloor(){if(mode!='combat')return;run.floors++;
- if(F.kind=='B'){if(act==3)return win();mode='modal';const opts=[];for(let i=0;i<3;i++){const id=randRelic(['boss']);if(id&&!opts.includes(id))opts.push(id);else{const o=RELICS.find(r=>r.r=='boss'&&!has(r.id)&&!opts.includes(r.id));if(o)opts.push(o.id)}}
-  const next=()=>{act++;startAct();modal(`Act ${act}`,`You descend deeper... into <b>${ACTN[act-1]}</b>.`,[{t:'Onward',f:closeModal,p:1}])};
-  const cid=randRelic(['cursed']);modal('Boss Relic','Choose one treasure from the fallen boss:'+opts.map(id=>`<div style="margin:6px 0">${relImg(id,32)} <b style="color:${RAR.boss}">${RB[id].n}</b> <small>${RB[id].d}</small></div>`).join('')+(cid?'<small>...or claim a forbidden prize:</small>'+cursedCard(cid):''),opts.map((id,i)=>({t:RB[id].n,p:i==0,f:()=>{gainRelic(id);next()}})).concat(cid?[{t:'\u2620 '+RB[cid].n+' (cursed)',f:()=>{gainRelic(cid);next()}}]:[]).concat([{t:'Skip',f:next}]))}
- else{mode='map';log('You return to the road. Choose your next destination.','#f2c447')}hud();saveRun('floor')}
+ if(F.kind=='B'){if(act==3)return win();const opts=[];for(let i=0;i<3;i++){const id=randRelic(['boss']);if(id&&!opts.includes(id))opts.push(id);else{const o=RELICS.find(r=>r.r=='boss'&&!has(r.id)&&!opts.includes(r.id));if(o)opts.push(o.id)}}
+  showBossRelic(opts,randRelic(['cursed']))}
+ else{inFloor=0;mode='map';log('You return to the road. Choose your next destination.','#f2c447')}hud();saveRun('floor')}
 function obtainableChest(c){if(!c||c.open)return false;if(c.kind=='fairy'&&c.fail)return false;return true}
 function roomLoot(L){if(!L)return {known:0,fairy:0,chests:0,picks:0,urns:0,n:0};let fairy=0,chests=0,picks=0;
  for(const c of L.chests||[]){if(!obtainableChest(c))continue;if(c.kind=='fairy')fairy++;else chests++}
@@ -1004,30 +1021,43 @@ function stepLoot(){if(!L.coins)L.coins=[];if(!L.hearts)L.hearts=[];const pcx=P.
   if(c.age>8&&(ov(pickBox(),c)||c.mag&&dd<8)){c.got=1;if(c.v){const sv=Math.max(1,Math.round(c.v*(has('furnace')?2:1)));meta.souls+=sv;run.souls=(run.souls||0)+sv;sfx('coin');L.fx.push({x:c.x,y:c.y-4,t:tick,s:'+'+sv,c:'#e0a0ff'})}else{const b=P.hp;if(!has('miser'))heal(1);sfx('heal'in SFX?'heal':'relic');L.fx.push({x:c.x,y:c.y-4,t:tick,s:has('miser')?'NO HEAL':P.hp>b?'+1 HEART':'FULL',c:'#ff6f8f'});log(P.hp>b?'A heart restores 1 Heart.':'A heart fades - your Hearts are full.','#ff6f8f')}}}
  const n=L.coins.length;L.coins=L.coins.filter(c=>!c.got);L.hearts=L.hearts.filter(c=>!c.got);if(L.coins.length<n){saveMeta();hud()}}
 const heal=n=>{n=HEALSC(n);P.hp=Math.min(P.mhp,P.hp+n)};
-function treasure(){const gold=R(4)==0,g=addGold((gold?40:20)+R(20)+act*10),id=randRelic(gold?['rare','uncommon']:['common','uncommon']);let t=`You pry open ${gold?'a <b style="color:#ffd24a">GOLDEN</b>':'an ancient'} chest: <b>${g} gold</b>`+(id?`<br>and a relic: ${relImg(id,32)} <b style="color:${RAR[RB[id].r]}">${RB[id].n}</b><br><small>${RB[id].d}</small>`:'');const cid=Math.random()<.35?randRelic(['cursed']):null;if(cid)t+=`<br><br>Beside it sits a <b style="color:${RAR.cursed}">CURSED CHEST</b>, bound in red chains. Open it instead?`+cursedCard(cid);modal(gold?'Golden Chest':'Treasure Chest',t,[{t:'Take it',f:()=>{gainRelic(id);closeModal()},p:1}].concat(cid?[{t:'Open the Cursed Chest instead',f:()=>{addGold(0);gainRelic(cid);closeModal()}}]:[]))}
-function rest(){modal('Rest Site','A sputtering campfire. Rest your bones, or tend your gear.',[{t:has('grail')?'Rest (Holy Grail: full heal)':'Rest (restore 3 Hearts)',p:1,f:()=>{heal(has('grail')?99:3);log('You rest by the fire.','#8f8');closeModal()}},
+function setPending(p){if(run)run.pending=p}
+function clearPending(){if(run)run.pending=null}
+function rewardModal(t,body,btns,wide){modal(t,body,(btns||[]).map(b=>Object.assign({},b,{f:()=>{clearPending();if(b.f)b.f();saveRun('reward')}})),wide)}
+function showBossRelic(opts,cid){opts=(opts||[]).filter(id=>id&&RB[id]);cid=cid&&RB[cid]?cid:null;setPending({k:'boss',opts,cid});
+ const next=()=>{inFloor=0;act++;startAct();modal(`Act ${act}`,`You descend deeper... into <b>${ACTN[act-1]}</b>.`,[{t:'Onward',f:()=>{closeModal();saveRun('act')},p:1}])};
+ rewardModal('Boss Relic','Choose one treasure from the fallen boss:'+opts.map(id=>`<div style="margin:6px 0">${relImg(id,32)} <b style="color:${RAR.boss}">${RB[id].n}</b> <small>${RB[id].d}</small></div>`).join('')+(cid?'<small>...or claim a forbidden prize:</small>'+cursedCard(cid):''),opts.map((id,i)=>({t:RB[id].n,p:i==0,f:()=>{gainRelic(id);next()}})).concat(cid?[{t:'\u2620 '+RB[cid].n+' (cursed)',f:()=>{gainRelic(cid);next()}}]:[]).concat([{t:'Skip',f:next}]));mode='modal'}
+function showChest(p){const golden=p&&p.golden?1:0,g=+p.g||0,id=p&&p.id&&RB[p.id]?p.id:null,cid=p&&p.cid&&RB[p.cid]?p.cid:null;setPending({k:'chest',golden,g,id,cid});
+ let t=`You pry open ${golden?'a <b style="color:#ffd24a">GOLDEN</b>':'an ancient'} chest: <b>${g} gold</b>`+(id?`<br>and a relic: ${relImg(id,32)} <b style="color:${RAR[RB[id].r]}">${RB[id].n}</b><br><small>${RB[id].d}</small>`:'');
+ if(cid)t+=`<br><br>Beside it sits a <b style="color:${RAR.cursed}">CURSED CHEST</b>, bound in red chains. Open it instead?`+cursedCard(cid);
+ rewardModal(golden?'Golden Chest':'Treasure Chest',t,[{t:'Take it',f:()=>{gainRelic(id);closeModal()},p:1}].concat(cid?[{t:'Open the Cursed Chest instead',f:()=>{addGold(0);gainRelic(cid);closeModal()}}]:[]))}
+function showRest(){setPending({k:'rest'});rewardModal('Rest Site','A sputtering campfire. Rest your bones, or tend your gear.',[{t:has('grail')?'Rest (Holy Grail: full heal)':'Rest (restore 3 Hearts)',p:1,f:()=>{heal(has('grail')?99:3);log('You rest by the fire.','#8f8');closeModal()}},
  {t:'Sharpen blade (+1 ATK)',f:()=>{P.wpn++;log('Your blade gleams. +1 ATK','#6cf');closeModal()}},{t:'Reforge armor (+1 Max Heart)',f:()=>{P.arm++;P.mhp++;log('Your plate is reforged. +1 Heart','#6cf');closeModal()}}])}
+function eventRoll(kinds){const p=run&&run.pending&&run.pending.k==='event'?run.pending:null;if(p&&p.rolled)return p.id||null;const id=randRelic(kinds)||null;if(p){p.id=id;p.rolled=1}return id}
+function openPending(){const p=run&&run.pending;if(!p)return;if(p.k==='boss')return showBossRelic(p.opts||[],p.cid||null);if(p.k==='chest')return showChest(p);if(p.k==='rest')return showRest();if(p.k==='event'){const i=p.fallback?0:p.i|0;if(EVENTS[i])EVENTS[i]();else clearPending()}}
+function treasure(){const gold=R(4)==0,g=addGold((gold?40:20)+R(20)+act*10),id=randRelic(gold?['rare','uncommon']:['common','uncommon'])||null,cid=Math.random()<.35?(randRelic(['cursed'])||null):null;showChest({golden:gold?1:0,g,id,cid})}
+function rest(){showRest()}
 function shop(saved){const bought={};let items;if(saved&&Array.isArray(saved.items)){items=saved.items.map(it=>({k:it.k,n:it.n,c:it.c,id:it.id||null}));if(saved.bought)for(const k in saved.bought)if(saved.bought[k])bought[k]=1}else{items=[{k:'pot',n:'Healing Draught',c:15+act*3},{k:'wpn',n:'Whetstone (+1 ATK)',c:40+act*5},{k:'arm',n:'Plate Rivets (+1 Max Heart)',c:45+act*5},{k:'heal',n:'Cleric\u2019s Blessing (full heal)',c:30}];const sr=randRelic(['shop']),cr=randRelic(['common','uncommon']);if(sr)items.push({k:'relic',n:'Relic: '+RB[sr].n,c:90,id:sr});if(cr)items.push({k:'relic',n:'Relic: '+RB[cr].n,c:RB[cr].r=='common'?70:110,id:cr});const disc=has('greed')?.7:1;items.forEach(it=>it.c=Math.round(it.c*disc))}
  const apply=it=>{if(it.k=='pot')P.pots++;else if(it.k=='wpn')P.wpn++;else if(it.k=='arm'){P.arm++;P.mhp++;P.hp++}else if(it.k=='heal')heal(99);else if(it.k=='relic'&&it.id)gainRelic(it.id)};
  const persist=()=>{if(run)run.shop={items:items.map(it=>({k:it.k,n:it.n,c:it.c,id:it.id||null})),bought:{...bought}}};
  const show=()=>{persist();const relicBits=items.filter(i=>i.k=='relic'&&i.id&&RB[i.id]).map(i=>`<div>${relImg(i.id)} <b style="color:${RAR[RB[i.id].r]}">${RB[i.id].n}</b> <small>${RB[i.id].d}</small></div>`).join('');modal('Wandering Merchant',`"Wares for the brave, dark one."<br><b style="color:#ffd24a">Gold you are carrying: ${P.gold}</b>`+relicBits,items.map((it,i)=>({t:bought[i]?`${it.n} - SOLD`:`${it.n} - ${it.c}g`,dis:!!bought[i]||P.gold<it.c,f:()=>{if(bought[i]||P.gold<it.c)return;P.gold-=it.c;apply(it);bought[i]=1;log(`Bought ${it.n}.`,'#fd0');try{DIAG.note('shop','Bought '+it.k)}catch(e){}show();saveRun('shop')}})).concat([{t:'Leave',f:()=>{if(run)run.shop=null;try{DIAG.note('shop','Left the shop')}catch(e){}closeModal();saveRun('shop')},p:1}]))};try{DIAG.note('shop',saved?'Reopened the shop':'Opened the shop')}catch(e){}show()}
 const hurtE=n=>{P.hp=Math.max(1,P.hp-n)};
 const EVENTS=[
-()=>modal('The Weeping Shrine','A statue of a forgotten saint weeps tears of light.',[{t:'Pray (restore all Hearts)',p:1,f:()=>{heal(99);log('The saint\u2019s light mends you.','#8f8');closeModal()}},{t:'Pry out its gem eyes (+45 gold, lose 1 Heart)',f:()=>{giveGold(45);hurtE(1);log('Cursed! But richer.','#fd0');closeModal()}}]),
-()=>modal('The Dicing Imp','A grinning imp rattles bone dice. "Double or nothing, tin-man?"',[{t:'Wager 20 gold',dis:P.gold<20,f:()=>{if(R(2)){giveGold(20);log('You win the wager! +20 gold','#fd0')}else{P.gold-=20;log('The imp cackles. -20 gold','#f66')}closeModal()}},{t:'Walk away',f:closeModal,p:1}]),
-()=>modal('Ancient Armory','Rusted racks line the walls. One blade still shines... but the floor looks trapped.',[{t:'Grab the blade (+1 ATK, lose 1 Heart)',f:()=>{P.wpn++;hurtE(1);log('A dart grazes you, but the blade is yours.','#6cf');closeModal()}},{t:'Leave it',f:closeModal,p:1}]),
-()=>modal('Fallen Knight','The corpse of a knight, clutching a satchel.',[{t:'Search the body',p:1,f:()=>{P.pots++;giveGold(15);log('A draught and 15 gold.','#f6f');closeModal()}},{t:'Give a burial (+1 Max Heart)',f:()=>{P.mhp++;P.hp++;log('You feel blessed.','#8f8');closeModal()}}]),
-()=>modal('Ambush!','Shapes stir in the shadows. You are not alone.',[{t:'Draw your sword! (fight)',p:1,f:()=>{closeModal();startCombat('M')}},{t:'Flee (lose 1 Heart)',f:()=>{hurtE(1);log('You escape, bloodied.','#f66');closeModal()}}]),
-()=>modal('The Hooded Alchemist','"A sip of my brew? Results... vary."',[{t:'Drink (10 gold)',dis:P.gold<10,f:()=>{P.gold-=10;if(R(3)){P.mhp++;P.hp++;log('Vigor surges! +1 Max Heart','#8f8')}else{hurtE(1);log('Ugh. Poison. -1 Heart','#f66')}closeModal()}},{t:'Decline',f:closeModal,p:1}])];
-EVENTS.push(()=>{const id=randRelic(['uncommon','rare']);modal('The Blood Altar','A relic rests on a blood-stained altar. Dark whispers promise power.'+(id?`<br>${relImg(id,32)} <b>${RB[id].n}</b> <small>${RB[id].d}</small>`:''),[{t:'Take it (lose 1 Max Heart)',dis:!id||P.mhp<=2,f:()=>{P.mhp--;P.hp=Math.min(P.hp,P.mhp);gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
+()=>rewardModal('The Weeping Shrine','A statue of a forgotten saint weeps tears of light.',[{t:'Pray (restore all Hearts)',p:1,f:()=>{heal(99);log('The saint\u2019s light mends you.','#8f8');closeModal()}},{t:'Pry out its gem eyes (+45 gold, lose 1 Heart)',f:()=>{giveGold(45);hurtE(1);log('Cursed! But richer.','#fd0');closeModal()}}]),
+()=>rewardModal('The Dicing Imp','A grinning imp rattles bone dice. "Double or nothing, tin-man?"',[{t:'Wager 20 gold',dis:P.gold<20,f:()=>{if(R(2)){giveGold(20);log('You win the wager! +20 gold','#fd0')}else{P.gold-=20;log('The imp cackles. -20 gold','#f66')}closeModal()}},{t:'Walk away',f:closeModal,p:1}]),
+()=>rewardModal('Ancient Armory','Rusted racks line the walls. One blade still shines... but the floor looks trapped.',[{t:'Grab the blade (+1 ATK, lose 1 Heart)',f:()=>{P.wpn++;hurtE(1);log('A dart grazes you, but the blade is yours.','#6cf');closeModal()}},{t:'Leave it',f:closeModal,p:1}]),
+()=>rewardModal('Fallen Knight','The corpse of a knight, clutching a satchel.',[{t:'Search the body',p:1,f:()=>{P.pots++;giveGold(15);log('A draught and 15 gold.','#f6f');closeModal()}},{t:'Give a burial (+1 Max Heart)',f:()=>{P.mhp++;P.hp++;log('You feel blessed.','#8f8');closeModal()}}]),
+()=>rewardModal('Ambush!','Shapes stir in the shadows. You are not alone.',[{t:'Draw your sword! (fight)',p:1,f:()=>{closeModal();startCombat('M')}},{t:'Flee (lose 1 Heart)',f:()=>{hurtE(1);log('You escape, bloodied.','#f66');closeModal()}}]),
+()=>rewardModal('The Hooded Alchemist','"A sip of my brew? Results... vary."',[{t:'Drink (10 gold)',dis:P.gold<10,f:()=>{P.gold-=10;if(R(3)){P.mhp++;P.hp++;log('Vigor surges! +1 Max Heart','#8f8')}else{hurtE(1);log('Ugh. Poison. -1 Heart','#f66')}closeModal()}},{t:'Decline',f:closeModal,p:1}])];
+EVENTS.push(()=>{const id=eventRoll(['uncommon','rare']);rewardModal('The Blood Altar','A relic rests on a blood-stained altar. Dark whispers promise power.'+(id?`<br>${relImg(id,32)} <b>${RB[id].n}</b> <small>${RB[id].d}</small>`:''),[{t:'Take it (lose 1 Max Heart)',dis:!id||P.mhp<=2,f:()=>{P.mhp--;P.hp=Math.min(P.hp,P.mhp);gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
 const cursedCard=id=>id?`<div style="margin:6px 0;border:3px solid ${RAR.cursed};background:#2a1018;padding:6px">${relImg(id,32)} <b style="color:${RAR.cursed}">${RB[id].n}</b> <small style="color:${RAR.cursed}">CURSED</small><br><small>${relDesc(RB[id])}</small></div>`:'';
-EVENTS.push(()=>{const id=randRelic(['cursed']);if(!id)return EVENTS[0]();modal('The Cursed Altar','A black altar hums with forbidden power. A relic lies upon it, wrapped in red chains. Power always has a price...'+cursedCard(id),[{t:'Take the cursed relic',f:()=>{gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
+EVENTS.push(()=>{const pend=run&&run.pending;if(pend&&pend.fallback)return EVENTS[0]();const id=eventRoll(['cursed']);if(!id){if(pend&&pend.k==='event'){pend.fallback=1;pend.i=0}return EVENTS[0]()}rewardModal('The Cursed Altar','A black altar hums with forbidden power. A relic lies upon it, wrapped in red chains. Power always has a price...'+cursedCard(id),[{t:'Take the cursed relic',f:()=>{gainRelic(id);closeModal()}},{t:'Leave it',f:closeModal,p:1}])});
 const TODD_CHANCE=.25;
 function toddOffer(n){const deal=n&&n.todd;if(!deal||deal.done||!RB[deal.id])return;const lethal=!(P&&P.hp>1);
  modal('Todd\u2019s Wager',`Todd is waiting where the road bends. "One heart, knight. The relic is cursed, and I will not take the last one you have."`+cursedCard(deal.id)+`<br><small>You have ${P.hp} Heart${P.hp==1?'':'s'}. Declining costs nothing.</small>`,[
   {t:lethal?'One heart would end you':`Pay 1 Heart for ${RB[deal.id].n}`,dis:!!lethal,p:!lethal,f:()=>{if(!(P.hp>1)||n.todd!==deal||deal.done)return;P.hp--;deal.done=1;gainRelic(deal.id);log('Todd takes a heart and slides the relic across.','#ff5a5a');closeModal();saveRun('todd')}},
   {t:'Decline',p:!!lethal,f:()=>{deal.done=1;log('Todd shrugs. The road is still yours.','#c8bca0');closeModal();saveRun('todd')}}])}
-function event(){const n=pos;if(n&&n.t=='?'&&!n.todd&&Math.random()<TODD_CHANCE){const id=randRelic(['cursed']);if(id)n.todd={id,done:0}}if(n&&n.todd&&!n.todd.done)return toddOffer(n);EVENTS[R(EVENTS.length)]()}
+function event(){const n=pos;if(n&&n.t=='?'&&!n.todd&&Math.random()<TODD_CHANCE){const id=randRelic(['cursed']);if(id)n.todd={id,done:0}}if(n&&n.todd&&!n.todd.done)return toddOffer(n);const i=R(EVENTS.length);setPending({k:'event',i,rolled:0,id:null,fallback:0});EVENTS[i]()}
 // ---------- modal ----------
 let modalBtns=[];
 function modal(t,body,btns,wide){$('box').classList.remove('heirc');if(mode!='combat'&&mode!='title')mode='modal';const bx=$('box'),menu=wide&&wide.menu,ov=$('ov').style;bx.dataset.menu=menu?'1':'';ov.alignItems=menu?'flex-end':'center';ov.background=menu?'transparent':'';ov.paddingBottom=menu?'7vh':'';bx.style.width=menu?'340px':wide?'min(980px,96vw)':'';bx.innerHTML=menu?`<div class="modal-body">${body}</div>`:`<h2>${t}</h2><div class="modal-body">${body}</div>`;
@@ -1219,30 +1249,34 @@ function restoreBoss(r){const snap=r&&r.bossHp;if(!snap||!L||!L.mobs)return;let 
 function serRun(){if(!P||!run||P.dead||!MAP)return null;
  const nodes=[];for(const row of MAP.nodes)for(const n of row)if(n)nodes.push(n);nodes.push(MAP.boss);const nid=new Map(nodes.map((n,i)=>[n,i]));
  const map={ROWS:MAP.ROWS,COLS:MAP.COLS,nodes:nodes.map(n=>{const o={r:n.r,c:n.c,t:n.t,done:n.done,jx:n.jx,jy:n.jy,next:n.next.map(x=>nid.get(x))};if(n.todd)o.todd=n.todd;return o}),boss:nid.get(MAP.boss)};
- const ctx=mode=='combat'&&F?'combat':'map';let floor=null;
+ const ctx=(inFloor&&F)?'combat':'map';let floor=null;
  if(ctx=='combat'){const rid=new Map(F.rooms.map((r,i)=>[r,i]));floor={kind:F.kind,cur:rid.get(F.cur),start:rid.get(F.start),boss:rid.get(F.boss),rooms:F.rooms.map(r=>{const o={gx:r.gx,gy:r.gy,kind:r.kind,seen:r.seen,known:r.known,doors:{},drill:r.drill?1:0};if(r.dreadPrize)o.dreadPrize=r.dreadPrize;for(const d in r.doors)o.doors[d]=rid.get(r.doors[d]);
   if(r.L){const snap=bossSnap(r.L);if(snap)o.bossHp=snap;o.L=packLevel(r.L,r===F.cur)}return o})}}
  const p={...P};delete p.ch;delete p.trail;delete p.ox;delete p.oy;delete p.hbset;
  return{v:SAVE_V,t:Date.now(),chId:P.ch.id,P:p,run,act,pos:pos?nid.get(pos):null,map,ctx,floor,logs:logs.slice(0,6)}}
-function saveRun(why){try{const s=serRun();if(s)localStorage.setItem(SAVE_KEY,JSON.stringify(s));try{DIAG.note('save',(why||'save')+' '+(s&&s.ctx||'none'))}catch(e){}}catch(err){try{DIAG.fault('save',err)}catch(e){}}}
-function clearSave(){localStorage.removeItem(SAVE_KEY)}
-function peekSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!s)return null;if(s.v!==SAVE_V||!s.P||!s.map||!s.chId){clearSave();return null}return s}catch(e){clearSave();return null}}
-function loadRun(){const s=peekSave();if(!s)return false;try{
+function saveRun(why){try{const s=serRun();if(!s)return;if(!writer){if(!claimLock()){try{DIAG.note('save','readonly '+(why||''))}catch(e){}return}}else if(lockHeldByOther()){dropLock('taken');return}const cur=diskRev();if(cur>myRev){dropLock('stale');try{DIAG.note('save','stale '+(why||'')+' '+cur+'>'+myRev)}catch(e){}return}s.rev=cur+1;s.tab=TAB_ID;localStorage.setItem(REV_KEY,String(s.rev));localStorage.setItem(SAVE_KEY,JSON.stringify(s));let won=false;try{const back=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');won=!!(back&&back.tab===TAB_ID&&back.rev===s.rev)}catch(e){}if(!won||diskRev()>s.rev){dropLock('stale');return}myRev=s.rev;beat();try{saveBC&&saveBC.postMessage({k:'rev',id:TAB_ID,rev:myRev})}catch(e){}try{DIAG.note('save',(why||'save')+' '+(s.ctx||'none')+' r'+myRev)}catch(e){}}catch(err){try{DIAG.fault('save',err)}catch(e){}}}
+function clearSave(){try{if(!writer&&lockHeldByOther())return;if(!writer)claimLock();const next=diskRev()+1;myRev=next;localStorage.removeItem(SAVE_KEY);localStorage.setItem(REV_KEY,String(next))}catch(e){}}
+function peekSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!s)return null;if(s.v!==SAVE_V||!s.P||!s.map||!s.chId){if(!saveBlocked())clearSave();return null}return s}catch(e){if(!saveBlocked())clearSave();return null}}
+function showReadOnly(){if(typeof isModal==='function'&&isModal()&&typeof modalTitle==='function'&&modalTitle()==='Another tab has this run')return;modal('Another tab has this run','This journey is open in another tab. This one will not save, so it cannot put coins back on the ground or pay a reward a second time.<br><br>Take over here and the other tab stops saving.',[{t:'Take over here',p:1,f:()=>{takeOver()}},{t:'Just look',f:()=>{if(typeof lastModal!=='undefined'&&lastModal&&lastModal[0]!=='Another tab has this run')modal(...lastModal);else closeModal()}}])}
+function takeOver(){forceLock();myRev=diskRev();if(peekSave())loadRun();else closeModal()}
+function loadRun(){const s=peekSave();if(!s)return false;if(lockHeldByOther())writer=0;else claimLock();myRev=Math.max(+s.rev||0,diskRev());try{
  const nodes=s.map.nodes.map(n=>({...n,next:[]}));s.map.nodes.forEach((n,i)=>nodes[i].next=n.next.map(j=>nodes[j]));const grid=[...Array(s.map.ROWS)].map(()=>Array(s.map.COLS).fill(null));for(const n of nodes)if(n.r<s.map.ROWS)grid[n.r][n.c]=n;
  MAP={nodes:grid,boss:nodes[s.map.boss],ROWS:s.map.ROWS,COLS:s.map.COLS};pos=s.pos==null?null:nodes[s.pos];sel=0;
- P=s.P;P.ch=CHARS.find(c=>c.id==s.chId)||CHARS[0];P.trail=[];P.dead=0;if(!framesLive(P.hbset))delete P.hbset;run=s.run;act=s.act;logs=s.logs||[];if(!(run.goldGot>=0))run.goldGot=Math.max(0,Math.round(+P.gold)||0);if(!(run.souls>=0))run.souls=0;if(!(run.vowBase>=0))run.vowBase=0;if(!(run.vowPaid>=0))run.vowPaid=0;F=null;L=null;closeModal();
+ P=s.P;P.ch=CHARS.find(c=>c.id==s.chId)||CHARS[0];P.trail=[];P.dead=0;if(!framesLive(P.hbset))delete P.hbset;run=s.run;act=s.act;logs=s.logs||[];if(!(run.goldGot>=0))run.goldGot=Math.max(0,Math.round(+P.gold)||0);if(!(run.souls>=0))run.souls=0;if(!(run.vowBase>=0))run.vowBase=0;if(!(run.vowPaid>=0))run.vowPaid=0;if(run.pending==null)run.pending=null;F=null;L=null;closeModal();
  applyBright(hasT('mono'));
- if(s.ctx=='combat'&&s.floor){const fl=s.floor,rooms=fl.rooms.map(o=>{const mobs=o.L&&Array.isArray(o.L.mobs)?o.L.mobs:null,px=o.L&&o.L.px,py=o.L&&o.L.py,L=o.L?Object.assign({items:[],coins:[],hearts:[],props:[],chests:[]},o.L,{mobs:[],shots:[],pshots:[],bolts:[],parts:[],fx:[],cam:0}):null;if(L){delete L.px;delete L.py}return {gx:o.gx,gy:o.gy,kind:o.kind,seen:o.seen,known:o.known,drill:o.drill?1:0,doors:{},bossHp:o.bossHp||null,dreadPrize:o.dreadPrize||null,_mobs:mobs,_px:px,_py:py,L}});
+ if(s.ctx=='combat'&&s.floor){inFloor=1;const fl=s.floor,rooms=fl.rooms.map(o=>{const mobs=o.L&&Array.isArray(o.L.mobs)?o.L.mobs:null,px=o.L&&o.L.px,py=o.L&&o.L.py,L=o.L?Object.assign({items:[],coins:[],hearts:[],props:[],chests:[]},o.L,{mobs:[],shots:[],pshots:[],bolts:[],parts:[],fx:[],cam:0}):null;if(L){delete L.px;delete L.py}return {gx:o.gx,gy:o.gy,kind:o.kind,seen:o.seen,known:o.known,drill:o.drill?1:0,doors:{},bossHp:o.bossHp||null,dreadPrize:o.dreadPrize||null,_mobs:mobs,_px:px,_py:py,L}});
   fl.rooms.forEach((o,i)=>{for(const d in o.doors)rooms[i].doors[d]=rooms[o.doors[d]]});const grid2={};for(const r of rooms)grid2[r.gx+','+r.gy]=r;
   F={kind:fl.kind,rooms,grid:grid2,start:rooms[fl.start],boss:rooms[fl.boss],cur:null};mode='combat';enterRoom(rooms[fl.cur],null);
-  const cur=rooms[fl.cur];if(cur&&L&&cur._mobs){L.mobs=[];for(const sm of cur._mobs)reviveMob(sm)}if(cur&&cur._px!=null&&cur._py!=null&&isFinite(+cur._px)&&isFinite(+cur._py)){P.x=+cur._px;P.y=+cur._py;P.vx=P.vy=0;settlePlayer();P.safe={x:P.x,y:P.y}}saveRun('load')}
- else mode='map';
- if(run&&run.shop&&Array.isArray(run.shop.items)){try{shop(run.shop)}catch(e){try{DIAG.fault('shop',e)}catch(e2){}}}
- if(mode=='map'&&pos&&pos.todd&&!pos.todd.done)setTimeout(()=>toddOffer(pos),0);
- log(`${P.heir.name} resumes the journey.`,'#f2c447');hud();try{DIAG.note('load','Resumed '+(s.ctx||''))}catch(e){}return true}catch(err){try{DIAG.fault('load',err)}catch(e){}console.warn('load failed',err);clearSave();P=null;return false}}
-addEventListener('beforeunload',()=>saveRun('unload'));document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')saveRun('hidden')});
+  const cur=rooms[fl.cur];if(cur&&L&&cur._mobs){L.mobs=[];for(const sm of cur._mobs)reviveMob(sm)}if(cur&&cur._px!=null&&cur._py!=null&&isFinite(+cur._px)&&isFinite(+cur._py)){P.x=+cur._px;P.y=+cur._py;P.vx=P.vy=0;settlePlayer();P.safe={x:P.x,y:P.y}}if(writer)saveRun('load')}
+ else{inFloor=0;mode='map'}
+ if(!(run&&run.pending)&&run&&run.shop&&Array.isArray(run.shop.items)){try{shop(run.shop)}catch(e){try{DIAG.fault('shop',e)}catch(e2){}}}
+ if(run&&run.pending)setTimeout(openPending,0);
+ else if(mode=='map'&&pos&&pos.todd&&!pos.todd.done)setTimeout(()=>toddOffer(pos),0);
+ if(!writer)setTimeout(showReadOnly,50);
+ log(`${P.heir.name} resumes the journey.`,'#f2c447');hud();try{DIAG.note('load','Resumed '+(s.ctx||'')+(writer?'':' readonly'))}catch(e){}return true}catch(err){try{DIAG.fault('load',err)}catch(e){}console.warn('load failed',err);if(!saveBlocked())clearSave();P=null;return false}}
+addEventListener('beforeunload',()=>{if(beatTimer){clearInterval(beatTimer);beatTimer=0}saveRun('unload');try{sessionStorage.setItem('crypt_releasing',TAB_ID)}catch(e){}writer=0;const o=readLock();if(o&&o.id===TAB_ID)try{localStorage.removeItem(LOCK_KEY)}catch(e){}});document.addEventListener('visibilitychange',()=>{if(document.visibilityState=='hidden')saveRun('hidden')});
 let lastModal=null,underModal=null;
-const PAUSE_LAYER=/^(Paused|Abandon Run\?|Settings|What's New|Relic Index|Bug report)$/;
+const PAUSE_LAYER=/^(Paused|Abandon Run\?|Settings|What's New|Relic Index|Bug report|Another tab has this run)$/;
 function modalTitle(){const h=$('box')&&$('box').querySelector('h2');return h?h.textContent.trim():''}
 function underName(args){const t=(args&&args[0]||'')+'';if(/merchant/i.test(t))return 'the shop';if(/rest site/i.test(t))return 'the rest site';if(/chest/i.test(t))return 'the chest';if(/weapon/i.test(t))return 'the weapon';return 'the screen you left'}
 {const _m=modal;modal=function(...a){const t=a[0]||'';if(!PAUSE_LAYER.test(t))lastModal=a;return _m.apply(this,a)}}
@@ -1268,6 +1302,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'savelock',date:'Nov 16, 2026',t:'The same reward, one writer',d:'Leave a boss relic, a chest, a campfire, or a roadside event open and it is waiting when you return, with the same choices. The gold from a chest is counted once. A second tab cannot overwrite the run. Take the run over there and the first tab stops saving.'},
  {id:'resumeroom',date:'Nov 16, 2026',t:'The fight is where you left it',d:'Leave a room unfinished and come back, and the same foes are waiting at the same health, with the coins still on the floor. You stand where you left off, or on the nearest open ground if that spot is solid. On the road, the message log sits above the map buttons. On a phone, every relic icon stays large enough to see and stays off the Fullscreen button.'},
  {id:'balance',date:'Nov 16, 2026',t:'A fairer vow, a heavier swing',d:'The Vow of Hardship pays half again the Soul Coins of the whole run. Each drop settles what is still owed, so rounding cannot pile up past 1.5x. Splinter Bit and Quake Grip also deal their extra damage to the foe you hit: 2 for the great axe, 3 for the ultra greatsword.'},
  {id:'unstick',date:'Nov 16, 2026',t:'No more waking up in the wall',d:'Resuming a run no longer leaves you inside a brick counter or a low wall. If the spot you return to is solid, you are set down on the nearest open floor.'},
@@ -1883,10 +1918,10 @@ for(const t of TRAITS)TB[t.id]=t;
  if(meta.townBuy.pot){P.pots++;meta.townBuy.pot=0;log('Herbalist\u2019s draught: +1 Draught','#f6f')}if(meta.townBuy.bless){P.mhp++;meta.townBuy.bless=0;log('Blessing of the Dawn: +1 Max Heart','#ffd24a')}applyTavernBuff();P.hp=P.mhp;saveMeta();hud()}}
 // --- events (new) ---
 EVENTS.push(
- ()=>modal('Wandering Merchant','A hunched peddler with a cart of oddities. "Coin for wonders, knight?"',[{t:'Buy a Draught (25 gold)',dis:P.gold<25,f:()=>{P.gold-=25;P.pots++;log('+1 Draught','#f6f');closeModal()}},{t:'Buy a mystery relic (70 gold)',dis:P.gold<70,f:()=>{P.gold-=70;gainRelic(randRelic(['common','uncommon']));closeModal()}},{t:'Move on',p:1,f:closeModal}]),
- ()=>modal('Moonlit Fountain','Silver water glows in a cracked basin.',[{t:'Drink (heal 2 Hearts)',p:1,f:()=>{heal(2);log('The water soothes you.','#8f8');closeModal()}},{t:'Toss in 20 gold (+2 Max Mana)',dis:P.gold<20,f:()=>{P.gold-=20;P.mmp+=2;P.mp=P.mmp;log('+2 Max Mana','#6fc8ff');closeModal()}}]),
- ()=>modal('The Lost Pilgrim','A frail pilgrim clutches torn pages. "He was a good man once... your ancestor."',[{t:'Hear his tale (lore page)',p:1,f:()=>{const left=LORE.map((_,i)=>i).filter(i=>!meta.journal.includes(i));if(left.length){meta.journal.push(left[0]);saveMeta();log(`Journal: "${LORE[left[0]][0]}"`,'#ffd24a')}else{giveGold(20);log('He presses 20 gold into your hand.','#fd0')}closeModal()}},{t:'Give him 10 gold (+1 Heart)',dis:P.gold<10,f:()=>{P.gold-=10;heal(1);closeModal()}}]),
- ()=>modal('Dread Hunt','Something vast stalks these halls, wreathed in black fire. Its trophies would be... special.',[{t:'Hunt it (Dread elite fight, cursed reward)',p:1,f:()=>{window.FORCEDREAD=1;closeModal();startCombat('M')}},{t:'Avoid it',f:closeModal}]));
+ ()=>rewardModal('Wandering Merchant','A hunched peddler with a cart of oddities. "Coin for wonders, knight?"',[{t:'Buy a Draught (25 gold)',dis:P.gold<25,f:()=>{P.gold-=25;P.pots++;log('+1 Draught','#f6f');closeModal()}},{t:'Buy a mystery relic (70 gold)',dis:P.gold<70,f:()=>{P.gold-=70;gainRelic(randRelic(['common','uncommon']));closeModal()}},{t:'Move on',p:1,f:closeModal}]),
+ ()=>rewardModal('Moonlit Fountain','Silver water glows in a cracked basin.',[{t:'Drink (heal 2 Hearts)',p:1,f:()=>{heal(2);log('The water soothes you.','#8f8');closeModal()}},{t:'Toss in 20 gold (+2 Max Mana)',dis:P.gold<20,f:()=>{P.gold-=20;P.mmp+=2;P.mp=P.mmp;log('+2 Max Mana','#6fc8ff');closeModal()}}]),
+ ()=>rewardModal('The Lost Pilgrim','A frail pilgrim clutches torn pages. "He was a good man once... your ancestor."',[{t:'Hear his tale (lore page)',p:1,f:()=>{const left=LORE.map((_,i)=>i).filter(i=>!meta.journal.includes(i));if(left.length){meta.journal.push(left[0]);saveMeta();log(`Journal: "${LORE[left[0]][0]}"`,'#ffd24a')}else{giveGold(20);log('He presses 20 gold into your hand.','#fd0')}closeModal()}},{t:'Give him 10 gold (+1 Heart)',dis:P.gold<10,f:()=>{P.gold-=10;heal(1);closeModal()}}]),
+ ()=>rewardModal('Dread Hunt','Something vast stalks these halls, wreathed in black fire. Its trophies would be... special.',[{t:'Hunt it (Dread elite fight, cursed reward)',p:1,f:()=>{window.FORCEDREAD=1;closeModal();startCombat('M')}},{t:'Avoid it',f:closeModal}]));
 // --- Dread rare variants ---
 {const _rh=rollHeirs;rollHeirs=function(){const H=_rh();for(const h of H){if(h.traits.includes('giant')&&h.traits.includes('dwarf'))h.traits=h.traits.filter(t=>t!='dwarf');if(h.traits.includes('fleet')&&h.traits.includes('glassb'))h.traits=h.traits.filter(t=>t!='fleet')}return H}}
 function makeDread(e){e.dread=1;e.hp=e.mhp=Math.round(e.mhp*(e.elite?1.7:2.6))+6;e.n='Dread '+e.n.replace('Elite ','');e.xp*=3;e.dmg=(e.dmg||1);log(`A ${e.n} emerges, wreathed in black fire!`,'#ff3a6a');L.banner={t:140,s:'A DREAD FOE APPROACHES',c:'#ff3a6a'};sfx('roar')}
