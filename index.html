@@ -47,7 +47,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-16-unstick';
+const BUILD='2026-11-13-balance';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -170,11 +170,11 @@ const RELICS=[
 {id:'wrath',n:'Wrath Engine',r:'cursed',up:'+2 ATK for every missing Heart.',down:'You cannot use Dark Aegis.',i:["..oooo..",".oRRRRo.","oRrkkrRo","oRkookRo","oRkookRo","oRrkkrRo",".oRRRRo.","..oooo.."]},
 {id:'kindling',n:'Kindling',r:'uncommon',boon:'sword',d:'Longsword hits burn a foe for 3 damage.',i:["........","...rr...","..roor..",".royyor.",".oyyyyo.","..oyyo..","...oo...","........"]},
 {id:'through',n:'Through-shot',r:'uncommon',boon:'bow',d:'Bow shots pass through the first foe.',i:["........","..yy....",".y..y...",".y..y...",".y..y...","..yy....","....ll..","...llll."]},
-{id:'splinter',n:'Splinter Bit',r:'uncommon',boon:'axe',d:'A Great Axe hit splashes 2 damage onto nearby foes.',i:["........","..llll..",".llwwll.","lwwwwwwl",".llwwll.","..llll..","...ll...","........"]},
+{id:'splinter',n:'Splinter Bit',r:'uncommon',boon:'axe',d:'A Great Axe hit deals 2 extra damage to the foe you struck and to others within 28px.',i:["........","..llll..",".llwwll.","lwwwwwwl",".llwwll.","..llll..","...ll...","........"]},
 {id:'barbed',n:'Barbed Point',r:'uncommon',boon:'spear',d:'Spear hits poison a foe for 4 damage.',i:["........","......ee",".....eEe","....eEe.","...eEe..","lleEe...","llll....","ll......"]},
 {id:'billhook',n:'Billhook',r:'uncommon',boon:'halb',d:'A halberd hit slows a foe for 1.2s and tugs them closer.',i:["........","....ww..","...w.w..","..w..w..",".w...w..","llllw...","llll....","ll......"]},
 {id:'sunder',n:'Sundering Edge',r:'uncommon',boon:'gs',d:'Greatsword hits bleed a foe for 3 damage.',i:["......rr",".....rRr","....rRr.","...rRr..","y.rRr...","yyRr....","nny.....","N..y...."]},
-{id:'quake',n:'Quake Grip',r:'uncommon',boon:'ugs',d:'An ultra greatsword hit shocks other nearby foes for 3 damage.',i:["........","..oooo..",".o....o.","o..yy..o",".o.yy.o.","..oooo..","...nn...","..nnnn.."]},
+{id:'quake',n:'Quake Grip',r:'uncommon',boon:'ugs',d:'An ultra greatsword hit deals 3 extra damage to the foe you struck and to others within 40px.',i:["........","..oooo..",".o....o.","o..yy..o",".o.yy.o.","..oooo..","...nn...","..nnnn.."]},
 {id:'flask',n:'Alchemist\u2019s Flask',r:'shop',d:'Draughts restore 3 Hearts instead of 2.',i:["...nn...","...ww...","..wppw..",".wpppw..",".wppwpw.",".wppppw.","..wwww.."]},
 {id:'idol',n:'Golden Idol',r:'shop',d:'Gain 50 gold now. Gain 10% more gold.',pick:()=>{giveGold(50)},i:["...yy...","..yrry..","..yyyy..",".yyyyyy.","y.yyyy.y","..yyyy..","..y..y..",".yy..yy."]}];
 const RB={};for(const r of RELICS){if(r.r=='cursed')r.d=r.up+' BUT: '+r.down;RB[r.id]=r;SP['rel_'+r.id]=up(r.i)}
@@ -182,8 +182,8 @@ const has=id=>P&&P.relics&&P.relics.includes(id);
 function randRelic(rs){const W={common:6,uncommon:3,rare:1.2,boss:1,shop:1,cursed:1},wep=(P&&P.wep)||'sword',pool=RELICS.filter(r=>rs.includes(r.r)&&!has(r.id)&&(!r.boon||r.boon===wep));if(!pool.length)return null;let x=Math.random()*pool.reduce((a,r)=>a+W[r.r],0);for(const r of pool)if((x-=W[r.r])<0)return r.id;return pool[0].id}
 function heldBoon(id){const r=RB[id];return !!(has(id)&&r&&r.boon===(P.wep||'sword'))}
 function weaponBoon(e){if(!e||e.hp<=0)return;if(heldBoon('kindling'))e.burn=Math.max(e.burn||0,60);if(heldBoon('barbed'))e.poi=Math.max(e.poi||0,96);if(heldBoon('sunder'))e.bleed=Math.max(e.bleed||0,60);if(heldBoon('billhook')){e.slow=Math.max(e.slow||0,70);if(!bossImmune(e)){const dir=Math.sign((P.x+P.w/2)-(e.x+e.w/2))||P.face||1;e.vx+=dir*1.2}}
- if(heldBoon('splinter')){for(const o of L.mobs)if(o!==e&&o.hp>0&&o.splinterBy!==P.hitId&&Math.hypot((o.x+o.w/2)-(e.x+e.w/2),(o.y+o.h/2)-(e.y+e.h/2))<28){o.splinterBy=P.hitId;o.hp-=2;o.fl=tick;L.fx.push({x:o.x+o.w/2,y:o.y-2,t:tick,s:'2',c:'#e8ecf4'})}}
- if(heldBoon('quake')){for(const o of L.mobs)if(o!==e&&o.hp>0&&o.quakeBy!==P.hitId&&Math.hypot((o.x+o.w/2)-(e.x+e.w/2),(o.y+o.h/2)-(e.y+e.h/2))<40){o.quakeBy=P.hitId;o.hp-=3;o.fl=tick;if(!bossImmune(o))o.vy-=1.2;L.fx.push({x:o.x+o.w/2,y:o.y-2,t:tick,s:'3',c:'#ffd24a'})}}}
+ if(heldBoon('splinter')){for(const o of L.mobs)if(o.hp>0&&o.splinterBy!==P.hitId&&Math.hypot((o.x+o.w/2)-(e.x+e.w/2),(o.y+o.h/2)-(e.y+e.h/2))<28){o.splinterBy=P.hitId;o.hp-=2;o.fl=tick;L.fx.push({x:o.x+o.w/2,y:o.y-2,t:tick,s:'2',c:'#e8ecf4'})}}
+ if(heldBoon('quake')){for(const o of L.mobs)if(o.hp>0&&o.quakeBy!==P.hitId&&Math.hypot((o.x+o.w/2)-(e.x+e.w/2),(o.y+o.h/2)-(e.y+e.h/2))<40){o.quakeBy=P.hitId;o.hp-=3;o.fl=tick;if(!bossImmune(o))o.vy-=1.2;L.fx.push({x:o.x+o.w/2,y:o.y-2,t:tick,s:'3',c:'#ffd24a'})}}}
 function gainRelic(id){if(!id){addGold(30);log('No relic found... +30 gold instead.');return}const r=RB[id];P.relics.push(id);if(!meta.seenRelics.includes(id)){meta.seenRelics.push(id);saveMeta()}sfx('relic');r.pick&&r.pick();log(`Relic: ${r.n}!`,RAR[r.r]);hud()}
 function noteRunGold(n){n=Math.round(+n)||0;if(n>0&&run)run.goldGot=(run.goldGot||0)+n}
 function giveGold(n){n=Math.round(+n)||0;if(n<=0)return 0;P.gold+=n;noteRunGold(n);return n}
@@ -992,7 +992,7 @@ function drawMinimap(){const cw=30,chh=20,gap=6,ox=VW-10-5*(cw+gap),oy=212;cx.fi
    if(q.fairy)pip('#6fe8ff','#fff6e0');if(q.chests||q.picks)pip('#ffd24a','#c9a24a');if(!q.n){cx.fillStyle='#143018';cx.fillRect(x+cw-9,y+chh-8,8,7);cx.fillStyle='#6fe86f';cx.fillRect(x+cw-7,y+chh-4,2,2);cx.fillRect(x+cw-5,y+chh-3,2,2);cx.fillRect(x+cw-4,y+chh-5,2,2);cx.fillRect(x+cw-3,y+chh-6,2,2)}}}}
 
 function dropLoot(e){L.coins=L.coins||[];L.hearts=L.hearts||[];const tier=Math.max(1,Math.ceil(e.xp/4)),fl=(act-1)*3+(run.floors||0);
- let v=Math.round((tier+fl*.5)*(e.elite?3:1)*(e.boss?8:1)),n=Math.min(e.boss?20:e.elite?8:4,Math.max(1,Math.ceil(v/2)));const per=Math.max(1,Math.floor(v/n));let rem=v;
+ let v=Math.round((tier+fl*.5)*(e.elite?3:1)*(e.boss?8:1));if(vowOn())v=Math.max(0,Math.round(v*VOW_SOULS));const n=Math.min(e.boss?20:e.elite?8:4,Math.max(1,Math.ceil(v/2)));const per=Math.max(1,Math.floor(v/n));let rem=v;
  for(let i=0;i<n;i++){const val=i==n-1?rem:per;rem-=val;if(val<=0)break;L.coins.push({x:e.x+e.w/2-2,y:e.y+e.h/2-2,w:4,h:4,vx:(Math.random()-.5)*3,vy:-1.5-Math.random()*2.5,v:val,age:0,big:val>=4})}
  const hc=(e.boss?1:e.elite?.3:.1)*(e.boss?1:DROPM());if(Math.random()<hc)L.hearts.push({x:e.x+e.w/2-3,y:e.y,w:6,h:6,vx:(Math.random()-.5)*1.5,vy:-2.5,age:0});if(e.elite&&!e.boss)maybeWeapon(.2)}
 const pickBox=()=>{const g=has('lode')?3:1;return{x:P.x-6*g,y:P.y-8*g,w:P.w+12*g,h:P.h+18*g}};function unstick(e){let n=0;while(n<24&&!freeBox(e.x,e.y,e.w,e.h)){e.y-=1;n++}if(n){e.vy=Math.min(e.vy,0)}}
@@ -1000,7 +1000,7 @@ function stepLoot(){if(!L.coins)L.coins=[];if(!L.hearts)L.hearts=[];const pcx=P.
  for(const c of L.coins.concat(L.hearts)){c.age++;if(!c.mag)unstick(c);const dx=pcx-(c.x+c.w/2),dy=pcy-(c.y+c.h/2),dd=Math.hypot(dx,dy);
   if(c.v&&(c.age>35&&dd<(has('lode')?180:70)||!L.mobs.length&&c.age>25)||c.mag){c.mag=(c.mag||0)+1;const sp=Math.min(dd,1.5+c.mag*.15);c.vx=dx/(dd||1)*sp;c.vy=dy/(dd||1)*sp;c.x+=c.vx;c.y+=c.vy}
   else{c.vy=Math.min(c.vy+.2,4);c.x+=c.vx;if(solid(Math.floor((c.x+c.w/2)/8),Math.floor((c.y+c.h/2)/8))){c.x-=c.vx;c.vx*=-.5}const vy=c.vy;moveY(c);if(c.ground){c.vx*=.8;if(vy>1){c.vy=-vy*.45;c.ground=0}}}
-  if(c.age>8&&(ov(pickBox(),c)||c.mag&&dd<8)){c.got=1;if(c.v){const sv=Math.max(1,Math.round(c.v*(has('furnace')?2:1)*(vowOn()?VOW_SOULS:1)));meta.souls+=sv;run.souls=(run.souls||0)+sv;sfx('coin');L.fx.push({x:c.x,y:c.y-4,t:tick,s:'+'+sv,c:'#e0a0ff'})}else{const b=P.hp;if(!has('miser'))heal(1);sfx('heal'in SFX?'heal':'relic');L.fx.push({x:c.x,y:c.y-4,t:tick,s:has('miser')?'NO HEAL':P.hp>b?'+1 HEART':'FULL',c:'#ff6f8f'});log(P.hp>b?'A heart restores 1 Heart.':'A heart fades - your Hearts are full.','#ff6f8f')}}}
+  if(c.age>8&&(ov(pickBox(),c)||c.mag&&dd<8)){c.got=1;if(c.v){const sv=Math.max(1,Math.round(c.v*(has('furnace')?2:1)));meta.souls+=sv;run.souls=(run.souls||0)+sv;sfx('coin');L.fx.push({x:c.x,y:c.y-4,t:tick,s:'+'+sv,c:'#e0a0ff'})}else{const b=P.hp;if(!has('miser'))heal(1);sfx('heal'in SFX?'heal':'relic');L.fx.push({x:c.x,y:c.y-4,t:tick,s:has('miser')?'NO HEAL':P.hp>b?'+1 HEART':'FULL',c:'#ff6f8f'});log(P.hp>b?'A heart restores 1 Heart.':'A heart fades - your Hearts are full.','#ff6f8f')}}}
  const n=L.coins.length;L.coins=L.coins.filter(c=>!c.got);L.hearts=L.hearts.filter(c=>!c.got);if(L.coins.length<n){saveMeta();hud()}}
 const heal=n=>{n=HEALSC(n);P.hp=Math.min(P.mhp,P.hp+n)};
 function treasure(){const gold=R(4)==0,g=addGold((gold?40:20)+R(20)+act*10),id=randRelic(gold?['rare','uncommon']:['common','uncommon']);let t=`You pry open ${gold?'a <b style="color:#ffd24a">GOLDEN</b>':'an ancient'} chest: <b>${g} gold</b>`+(id?`<br>and a relic: ${relImg(id,32)} <b style="color:${RAR[RB[id].r]}">${RB[id].n}</b><br><small>${RB[id].d}</small>`:'');const cid=Math.random()<.35?randRelic(['cursed']):null;if(cid)t+=`<br><br>Beside it sits a <b style="color:${RAR.cursed}">CURSED CHEST</b>, bound in red chains. Open it instead?`+cursedCard(cid);modal(gold?'Golden Chest':'Treasure Chest',t,[{t:'Take it',f:()=>{gainRelic(id);closeModal()},p:1}].concat(cid?[{t:'Open the Cursed Chest instead',f:()=>{addGold(0);gainRelic(cid);closeModal()}}]:[]))}
@@ -1262,6 +1262,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'balance',date:'Nov 13, 2026',t:'A fairer vow, a heavier swing',d:'The Vow of Hardship adds its extra Soul Coins once to the whole drop, then splits that pile into coins. One coin from a larger drop is no longer doubled by itself. Splinter Bit and Quake Grip also deal their extra damage to the foe you hit: 2 for the great axe, 3 for the ultra greatsword.'},
  {id:'unstick',date:'Nov 16, 2026',t:'No more waking up in the wall',d:'Resuming a run no longer leaves you inside a brick counter or a low wall. If the spot you return to is solid, you are set down on the nearest open floor.'},
  {id:'pact',date:'Nov 13, 2026',t:'A harder road, if you want it',d:'At the gate you may take the Vow of Hardship. Ordinary foes and elites have 35% more health, and Soul Coins from the run are half again. Named bosses and the master of a throne room are left as they are. The vow is off unless you choose it, it lasts only for that run, and the corner of the screen says so while it is on.'},
  {id:'todd',date:'Nov 13, 2026',t:'Todd on the road',d:'About one unknown room in four is Todd. He offers one cursed relic for a single heart, and you may decline. He will not take the heart if it would end you. Leave the bargain open and it is waiting in that same room when you return.'},
