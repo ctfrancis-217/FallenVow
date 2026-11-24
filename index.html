@@ -48,7 +48,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-24-demonlord-warlord';
+const BUILD='2026-11-24-demonlord-warlord-v2';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -1302,6 +1302,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'warlordv2',date:'Nov 24, 2026',t:'Warlord legs and blade',d:'The Warlord’s shins and boots are redrawn as digitigrade armor: bent knee, angled shin, hock joint, and clawed sabatons with overlapping greaves. His planted greatsword now shows a clear steel blade with fuller, lit and shadowed edges, crossguard, wrapped grip, and pommel, with flames licking along the steel rather than replacing it.'},
  {id:'warlord',date:'Nov 24, 2026',t:'The Demon Lord, remade',d:'The Demon Lord is redrawn as the Warlord: organic crimson plate with gold filigree, digitigrade legs, bat wings with finger bones, a great helm with curled ram horns, and a planted flaming greatsword. His body hitbox matches the new silhouette, and hellslash reach follows the blade. Phases, health, and attack patterns are unchanged.'},
  {id:'artv2',date:'Nov 19, 2026',t:'16-bit craft, same dark vow',d:'The heir, the foes, the elites, the bosses, and the held weapons are redrawn in classic 16-bit RPG craft: hard light from the upper left, polished plate, clear visors, and saturated hell accents. Canvas sizes and grips stay put. The Black Knight keeps his black plate, crimson cape, gold trim, and red cross.'},
  {id:'savelock',date:'Nov 16, 2026',t:'The same reward, one writer',d:'Leave a boss relic, a chest, a campfire, or a roadside event open and it is waiting when you return, with the same choices. The gold from a chest is counted once. A second tab cannot overwrite the run. Take the run over there and the first tab stops saving.'},
@@ -3559,33 +3560,54 @@ const TRAP=(function(){
    P([[x,70+br],[x+7,70+br],[x+9,70+br+len],[x+2,70+br+len-8],[x-2,70+br+len]],i%2?Rd[1]:Rd[0]);
    if(i%2==0)Ln(x+1,72+br,x+2,70+br+len-10,1.2,Rd[2]);
   }
-  // ---- DIGITIGRATE LEGS — clear Z-bend (thigh out, hock back, shin down) ----
+  // ---- DIGITIGRADE LEGS — exaggerated Z: thigh out → hock → shin in → clawed sabaton ----
   for(const s of[-1,1]){
-   const hip=C+s*14;
-   // thigh angled outward
-   P([[hip-6,102+br],[hip+10,102+br],[hip+16+s*8,122],[hip-2+s*6,124]],Ir[2]);
-   SE(hip+s*4,112+br,10,12,Rd.slice(0,4));
-   R(hip-4,104+br,12,1,Ir[5]);R(hip-2,106+br,4,12,Rd[4]);
-   Ln(hip-4,104+br,hip+8,104+br,1.5,Gd[3]);
-   // reverse knee / hock (pushed back)
-   const kx=hip+s*10,ky=126;
-   SE(kx,ky,8,7,Ir.slice(1,5));
-   P([[kx-8,ky-4],[kx+8,ky-4],[kx+6+s*4,ky+10],[kx-6+s*2,ky+10]],Ir[1]);
-   R(kx-4,ky,8,1,Gd[3]);R(kx,ky+2,1,1,Gd[5]);
-   // shin cannon dropping to floor
-   const sx=kx+s*2;
-   P([[sx-7,ky+8],[sx+8,ky+8],[sx+7,154],[sx-6,154]],Ir[2]);
-   SE(sx,148,8,11,Ir.slice(1,5));
-   R(sx-3,ky+10,4,14,Ir[4]);R(sx-3,ky+10,4,1,Ir[5]);
-   Ln(sx-6,142,sx+6,142,1.5,Gd[2]);
-   // pointed sabaton
-   P([[sx-8,152],[sx+10,152],[sx+14+s,F-2],[sx+2,F],[sx-4,F-1],[sx-10+s,F-3]],Ir[1]);
-   R(sx-8,152,18,2,Ir[3]);R(sx-8,152,18,1,Gd[4]);E(sx+1,F-1,5,2,'#080408');
+   const hipX=C+s*12,hipY=102+br;
+   // 1) thigh plate — angles hard OUT and DOWN (knee far from centerline)
+   const kneeX=hipX+s*26,kneeY=126;
+   P([[hipX-7,hipY],[hipX+9,hipY],[kneeX+8,kneeY-2],[kneeX-6,kneeY+4]],Ir[1]);
+   P([[hipX-5,hipY+2],[hipX+6,hipY+1],[kneeX+4,kneeY],[kneeX-4,kneeY+2]],Rd[2]);
+   // overlapping curved greave plates on thigh (UL rim)
+   P([[hipX-4,hipY+4],[hipX+4,hipY+3],[hipX+5,hipY+12],[hipX-3,hipY+13]],Rd[3]);
+   R(hipX-3,hipY+4,3,8,Rd[4]);R(hipX-3,hipY+4,3,1,Rd[5]);
+   Ln(hipX-6,hipY+1,hipX+7,hipY,1.4,Gd[3]);R(hipX-5,hipY+1,4,1,Gd[5]);
+   Ln(hipX-2,hipY+14,kneeX+2,kneeY-4,1.2,Gd[2]);
+   // 2) reverse knee / hock — bulbous OUT joint with gold cuff (must read at scale)
+   SE(kneeX+s*2,kneeY+2,11,10,Ir.slice(1,5));
+   P([[kneeX-10,kneeY-5],[kneeX+12,kneeY-7],[kneeX+14+s*5,kneeY+10],[kneeX-8,kneeY+12]],Ir[1]);
+   P([[kneeX-6,kneeY-2],[kneeX+8,kneeY-3],[kneeX+9,kneeY+7],[kneeX-5,kneeY+8]],Ir[3]);
+   R(kneeX-4,kneeY-1,8,2,Ir[4]);R(kneeX-4,kneeY-1,8,1,Ir[5]);
+   // gold joint ring
+   Ln(kneeX-8,kneeY+3,kneeX+10,kneeY+1,2.2,Gd[2]);R(kneeX-6,kneeY+3,5,1,Gd[4]);R(kneeX+2,kneeY+2,1,1,Gd[5]);
+   // hock armor fin
+   P([[kneeX+s*7,kneeY-3],[kneeX+s*9,kneeY-16],[kneeX+s*12,kneeY]],Gd[2]);R(kneeX+s*9,kneeY-16,1,1,Gd[5]);
+   // 3) shin / cannon — angles IN toward center then DOWN (digitigrade)
+   const ankX=hipX+s*4,ankY=152;
+   P([[kneeX-6,kneeY+6],[kneeX+8,kneeY+4],[ankX+8,ankY],[ankX-7,ankY]],Ir[1]);
+   // overlapping curved shin plates (4–5 shade steps)
+   P([[kneeX-4,kneeY+8],[kneeX+5,kneeY+7],[ankX+5,ankY-6],[ankX-4,ankY-4]],Ir[2]);
+   P([[kneeX-2,kneeY+10],[kneeX+3,kneeY+9],[ankX+2,ankY-10],[ankX-2,ankY-8]],Ir[3]);
+   R(kneeX-1,kneeY+10,3,12,Ir[4]);R(kneeX-1,kneeY+10,3,1,Ir[5]); // UL rim
+   // gold trim bands on shin (thin, not stripes)
+   Ln(kneeX-5,kneeY+14,kneeX+6,kneeY+12,1.3,Gd[2]);R(kneeX-4,kneeY+14,3,1,Gd[4]);
+   Ln(ankX-5,ankY-12,ankX+6,ankY-14,1.3,Gd[2]);R(ankX-4,ankY-12,3,1,Gd[4]);
+   // 4) clawed armored sabaton — pointed toes, overlapping plates
+   P([[ankX-10,ankY-4],[ankX+10,ankY-6],[ankX+16+s*2,F-1],[ankX+4,F],[ankX-2,F-1],[ankX-12+s,F-3]],Ir[1]);
+   P([[ankX-8,ankY-2],[ankX+8,ankY-4],[ankX+12+s,F-2],[ankX+2,F-1],[ankX-6,F-2]],Ir[2]);
+   R(ankX-8,ankY-2,14,2,Ir[3]);R(ankX-8,ankY-2,14,1,Gd[4]); // rim + gold cuff
+   R(ankX-6,ankY,4,1,Ir[5]);
+   // claw toes
+   for(let k=0;k<3;k++){
+    const tx=ankX-4+k*6+s*2,ty=F-2;
+    P([[tx,ankY+2],[tx+3,ankY+2],[tx+4+s,ty],[tx-1,ty]],Hn[2]);
+    R(tx+1,ty-1,1,1,Hn[4]);
+   }
+   E(ankX+2,F-1,4,1.5,'#060208');
   }
-  // loincloth tatters
+  // short loincloth — stop above hock so digitigrade kink stays visible
   for(let i=0;i<5;i++){
    const x=C-14+i*6;
-   P([[x,104+br],[x+7,104+br],[x+9,104+br+26+((i+f)%7)],[x+3,104+br+32],[x-1,104+br+24]],i%2?Rd[2]:Rd[1]);
+   P([[x,104+br],[x+7,104+br],[x+8,104+br+12+((i+f)%5)],[x+3,104+br+16],[x-1,104+br+12]],i%2?Rd[2]:Rd[1]);
   }
   // ---- TORSO — V-shaped, curved overlapping plates ----
   SE(C,80+br,26,28,['#100208','#221018','#3a1820']);
@@ -3633,9 +3655,9 @@ const TRAP=(function(){
   SE(C-40,76+br,11,18,Ir.slice(1,5));
   P([[C-48,62+br],[C-30,62+br],[C-28,90+br],[C-50,92+br]],Ir[2]);
   R(C-44,64+br,5,22,Rd[3]);R(C-44,64+br,5,1,Rd[5]);
-  SE(C-42,96+br,10,9,Ir.slice(1,5));
-  P([[C-50,90+br],[C-32,90+br],[C-30,104+br],[C-52,104+br]],Ir[1]);
-  for(let k=0;k<4;k++){const fx=C-46+k*4;Ln(fx,102+br,fx-2,102+br+8,2.2,Hn[3]);R(fx-2,110+br,1,1,Hn[4])}
+  SE(C-40,94+br,10,9,Ir.slice(1,5));
+  P([[C-48,88+br],[C-30,88+br],[C-28,100+br],[C-50,100+br]],Ir[1]);
+  // claws drawn later over sword grip
   SE(C+40,78+br,11,17,Ir.slice(1,5));
   P([[C+30,64+br],[C+48,64+br],[C+50,92+br],[C+28,90+br]],Ir[2]);
   R(C+36,66+br,5,20,Rd[3]);R(C+36,66+br,5,1,Rd[5]);
@@ -3658,26 +3680,58 @@ const TRAP=(function(){
    horn(C+s*13,32+br,s,12,4.5,.2,['#2a2428','#7a6a62','#e8dcc0']);
    for(let i=0;i<5;i++){const a=-Math.PI*.2+s*(-.35+i*.2),rr=9+i*3.8;R(C+s*13+Math.cos(a)*rr,30+br+Math.sin(a)*rr*.9,1,1,Hn[0])}
   }
-  // ---- PLANTED FLAMING GREATSWORD (steel first, flames along edge) ----
-  const sx0=C-42+sw,sy0=94+br,sx1=C+18,sy1=F-3;
-  const n=Math.max(Math.abs(sx1-sx0),Math.abs(sy1-sy0))||1;
+  // ---- PLANTED FLAMING GREATSWORD — solid steel blade + edge-only flames ----
+  const hx=C-36+sw,hy=90+br,tx=C-4+sw,ty=F-2;
+  const n=Math.max(Math.abs(tx-hx),Math.abs(ty-hy))||1;
+  // solid steel slab first (bright mid-steel so it never reads as a hollow gap)
   for(let i=0;i<=n;i++){
-   const t=i/n,x=Math.round(sx0+(sx1-sx0)*t),y=Math.round(sy0+(sy1-sy0)*t);
-   R(x-3,y-1,7,3,Ir[1]);R(x-2,y,5,2,Ir[3]);R(x-1,y,1,1,Ir[5]);R(x+2,y,1,1,Ir[0]);
+   const t=i/n,x=Math.round(hx+(tx-hx)*t),y=Math.round(hy+(ty-hy)*t);
+   const half=Math.max(3,Math.round(8*(1-t*.5)));
+   R(x-half,y-1,half*2+1,3,'#2a2430');
+   R(x-half+1,y,half*2-1,2,'#4a4458');
+   R(x-half+2,y,Math.max(1,half*2-3),1,'#6a6478'); // mid highlight band
+   R(x-1,y,2,1,'#1a1620'); // fuller groove (dark but not empty)
+   R(x,y,1,1,'#3a3448');
+   R(x-half,y,1,2,'#a8a0b0'); // lit UL edge
+   R(x-half,y,1,1,'#e8e0f0');
+   R(x+half-1,y,1,2,'#161018'); // shadowed edge
   }
-  for(let i=0;i<=n;i+=2){
-   const t=i/n,x=Math.round(sx0+(sx1-sx0)*t),y=Math.round(sy0+(sy1-sy0)*t);
-   const jag=((x*3+y*5+f*7+i)%5)-2;
-   // flames hug the upper edge so the fuller stays readable
-   R(x-2+jag,y-3,3,2,Fl[1]);R(x-1+jag,y-4,2,2,Fl[2]);
-   if(i%3==0)R(x+jag,y-5,2,2,Fl[3]);
-   if((i+f)%4==0)R(x+jag,y-6,1,1,Fl[4]);
-   if((i+f)%5==0)R(x-1+jag,y-2,1,1,Fl[5]);
+  P([[tx-4,ty-8],[tx+4,ty-8],[tx,ty+1]],'#4a4458');R(tx-1,ty-5,1,1,'#a8a0b0');
+  // continuous flame tongues licking OUTSIDE the steel (animated by frame)
+  for(let i=0;i<=n;i+=3){
+   const t=i/n,x=Math.round(hx+(tx-hx)*t),y=Math.round(hy+(ty-hy)*t);
+   const half=Math.max(3,Math.round(8*(1-t*.5)));
+   const flick=((i+f*5)%7)-3,len=5+((i+f)%4);
+   // upper/left tongue
+   Ln(x-half-1,y,x-half-2+flick,y-len,2.2,Fl[1]);
+   Ln(x-half-1,y-1,x-half-1+flick,y-len+1,1.4,Fl[2]);
+   if((i+f)%2==0)R(x-half-2+flick,y-len-1,1,1,Fl[4]);
+   if((i+f)%3==0)R(x-half-3+flick,y-len+1,1,1,Fl[3]);
+   // lower/right tongue
+   Ln(x+half,y,x+half+1+flick,y-len+2,2,Fl[1]);
+   Ln(x+half,y,x+half+flick,y-len+3,1.2,Fl[2]);
+   if((i+f)%4==0)R(x+half+1+flick,y-len+1,1,1,Fl[5]);
   }
-  R(sx0-9,sy0-4,20,6,Gd[2]);R(sx0-9,sy0-4,20,1,Gd[4]);
-  R(sx0-2,sy0-3,6,4,Gd[3]);R(sx0+1,sy0-1,2,2,Rd[4]);R(sx0+1,sy0-1,1,1,Fl[4]);
-  R(sx0-1,sy0-14,5,11,Ir[1]);R(sx0-1,sy0-14,5,1,Gd[2]);
-  R(sx0,sy0-16,3,3,Gd[3]);R(sx0,sy0-16,3,1,Gd[5]);
+  // tip bloom
+  for(const[dx,dy,col]of[[-3,-6,Fl[2]],[0,-9,Fl[3]],[3,-5,Fl[2]],[-1,-11,Fl[4]],[2,-10,Fl[5]],[0,-4,Fl[1]]])R(tx+dx+((f)%3-1),ty+dy,1,1,col);
+  // crossguard (gold, wide)
+  R(hx-12,hy-5,26,7,Gd[1]);R(hx-12,hy-5,26,1,Gd[4]);
+  R(hx-10,hy-4,22,5,Gd[2]);R(hx-4,hy-3,10,3,Gd[3]);
+  // wings of guard
+  P([[hx-12,hy-4],[hx-18,hy-8],[hx-14,hy+2]],Gd[2]);P([[hx+14,hy-4],[hx+20,hy-8],[hx+16,hy+2]],Gd[2]);
+  R(hx-16,hy-8,1,1,Gd[5]);R(hx+18,hy-8,1,1,Gd[5]);
+  // red gem in guard
+  R(hx-1,hy-2,4,3,Rd[3]);R(hx,hy-1,2,1,Fl[4]);
+  // wrapped grip
+  R(hx-2,hy-16,6,12,Ir[1]);R(hx-2,hy-16,6,1,Gd[2]);
+  for(let k=0;k<4;k++)R(hx-1,hy-14+k*3,4,2,k%2?Hn[2]:Hn[1]);
+  // pommel
+  R(hx-1,hy-20,4,5,Gd[2]);R(hx-1,hy-20,4,1,Gd[5]);E(hx+1,hy-18,2.5,2.5,Gd[3]);
+  // clawed fingers OVER the grip (read as gripping the hilt)
+  for(let k=0;k<4;k++){
+   const fx=hx-4+k*4,fy=hy+2;
+   Ln(fx,fy,fx-1,fy+6,2.2,Hn[3]);R(fx-1,fy+6,1,1,Hn[4]);
+  }
   if(v>=2&&(f%2==0))for(const[x,y]of[[C-22,48],[C+24,46],[C-6,38],[C+12,72]])R(x+sw,y+br,1,1,Fl[3]);
   return fin(v==3?100:96);
  };
