@@ -2696,8 +2696,8 @@ function wepAng(){const id=P.wep||'sword',k=QW().kind,len=P.mvLen||14,u=P.atkT>0
  if(P.bowC)return -.15-Math.min(1,P.bowC/42)*.35;
  if(!(P.atkT>0))return P.bowSnap?-.05:idleWepAng(id);
  let ang;if(id=='sword')ang=[-1.1,-.15,.15,.9][ci]+u*1.15;else if(k=='thrust')ang=0;else if(k=='cleave')ang=-1.6+u*2.9;else if(k=='sweep')ang=u<.55?-1.1+u*2.4:.5-(u-.55)*1.6;else if(id=='gs')ang=-1.15+u*2.05;else if(k=='ultra')ang=-2.25+u*3.5;else ang=-.8+u*1.4;
- if(dir=='up'){if(id=='sword')return -.35+[-.15,0,.05,.1][ci]+u*(-Math.PI/2+.35);if(k=='cleave')return -.2+u*-1.35;if(k=='sweep')return -.25+u*-1.3;if(id=='gs')return -.3+u*-1.35;if(k=='ultra')return -.15+u*-1.45;return -.3+u*(-Math.PI/2+.3)}
- if(dir=='down'){if(id=='sword')return .45+u*(Math.PI/2-.45);if(k=='cleave')return .55+u*(Math.PI/2-.55);if(k=='sweep')return .5+u*(Math.PI/2-.5);if(id=='gs')return .5+u*(Math.PI/2-.5);if(k=='ultra')return .4+u*(Math.PI/2-.4);return .5+u*(Math.PI/2-.5)}
+ if(dir=='up'){const lift=-.55+u*(-Math.PI/2+.55);if(id=='sword')return lift+[-.12,0,.04,.08][ci];return lift}
+ if(dir=='down')return .55+u*(Math.PI/2-.55);
  return ang}
 function handScreen(){const ds=P.ds||1,sx=P.sx||1,sy=P.sy||1,sc=Z||1,w=20*ds*sx,h=20*ds*sy,spL=spearPose(),fx=P.x+P.w/2+(spL?spL.lunge*(P.face||1):0),fy=P.y+P.h+ds*1.25,top=fy-h,bob=P._hb||0,pix=w*sc/64,piy=h*sc/64;
  if(P.face<0){const tx=Math.round((fx+w/2-L.camX)*sc),ty=Math.round((top-L.camY)*sc);return {x:tx-42.5*pix,y:ty+(42.5+bob)*piy,pix}}
