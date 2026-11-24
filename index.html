@@ -48,7 +48,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-24-demonlord-warlord-v2';
+const BUILD='2026-11-24-demonlord-warlord-v3';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -805,6 +805,19 @@ function eliteAI(e){const dx=(P.x+P.w/2)-(e.x+e.w/2),dy=(P.y+P.h/2)-(e.y+e.h/2),
 // ---- bosses ----
 function bossPhase(e){const ph=e.hp>e.mhp*2/3?1:e.hp>e.mhp/3?2:3;if(ph>(e.phase||1)){e.phase=ph;e.st='phase';e.timer=80;e.imm=1;L.shots=[];shake=16;sfx('roar');L.banner={t:130,s:`${e.n.toUpperCase()} - PHASE ${ph}`,c:'#ff5a3a'};burst(e.x+e.w/2,e.y+e.h/2,'#ffd24a',30);if((e.ai=='lich'||e.ai=='demon')&&ph==3)L.dark=1;if(e.ai=='demon')log(['','','"You think a borrowed sword can wound ME?"','"Then burn with me, Aldric’s blood!"'][ph],'#ff5a3a')}e.phase=e.phase||1;return e.phase}
 const pickMove=(e,pools)=>{const pool=pools[e.phase-1];let m=pool[(e.pat++)%pool.length];return m};
+// Keep Warlord sprite (wings/horns/blade) inside arena AND the player camera.
+function clampDemonSprite(e){if(!e||e.ai!='demon'||!L||!P)return;const fr=SPF['demon'+(e.phase>1?e.phase:'')]||SPF.demon,img=(fr&&fr[0])||SP.demon;const sz=img.dsz||80,pad=2,half=sz/2+pad,sc=e.sc||3,LW=L.w*8,LH=L.h*8,vw=VW/Z,vh=VH/Z;
+ let cx=e.x+e.w/2,foot=e.y+e.h;// draw: ex=cx-sz/2, ey=foot-sz+sc → top=foot-sz+sc, bot≈foot+sc
+ const topPad=sz-sc+pad,botPad=Math.max(0,sc)+pad;
+ // estimate camera the same way drawLevel does (prev L.camX if set, else from player)
+ let camX=L.camX,camY=L.camY;if(camX==null||isNaN(camX)){const look=L.look||0;camX=LW<vw?(LW-vw)/2:Math.max(0,Math.min(LW-vw,(P.x+3-vw/2+look)))}if(camY==null||isNaN(camY))camY=LH<vh?(LH-vh)/2:Math.max(0,Math.min(LH-vh,(L.cyF!=null?L.cyF:P.y)-vh/2));
+ // 1) arena bounds for full sprite (+rim pad)
+ cx=Math.max(half,Math.min(LW-half,cx));
+ let footMin=topPad,footMax=LH-botPad;foot=Math.max(footMin,Math.min(footMax,foot));
+ // 2) camera bounds for full sprite (so wings never leave the view)
+ cx=Math.max(camX+half,Math.min(camX+vw-half,cx));
+ foot=Math.max(camY+topPad,Math.min(camY+vh-botPad,foot));
+ e.x=cx-e.w/2;e.y=foot-e.h}
 function bossAI(e){const dx=(P.x+P.w/2)-(e.x+e.w/2),dy=(P.y+P.h/2)-(e.y+e.h/2),ad=Math.abs(dx),ph=bossPhase(e),grav=()=>{e.vy=Math.min(e.vy+.22,5.5)},fly=e.ai=='lich'||e.ai=='demon'||(e.ai=='dking'&&e.st=='fly');e.melee=0;
  const tl=e.tele>0;if(tl)e.tele--;if(e.st!='phase')e.imm=0;
  if(e.st=='phase'){if(!fly)grav();e.vx*=.8;e.timer--;if(e.timer<=0){e.imm=0;e.st='idle';e.timer=30}}
@@ -834,11 +847,11 @@ function bossAI(e){const dx=(P.x+P.w/2)-(e.x+e.w/2),dy=(P.y+P.h/2)-(e.y+e.h/2),a
   case'gust':grav();e.vx=0;if(!tl){{const d=Math.sign(dx||1);if(freeBox(P.x+d,P.y,P.w,P.h))P.x+=d;P.vx+=d*.3;}if(tick%2==0)L.parts.push({x:e.x+e.w/2+e.face*10,y:e.y+Math.random()*e.h,vx:e.face*3,vy:0,life:20,c:'#e8ecf4'});if(--e.timer<=0)rec(50)}break;
   case'fly':{const ang=e.t*.05,tx=P.x+Math.cos(ang)*80,ty=Math.max(16,P.y-70)+Math.sin(e.t/10)*8;e.vx+=(tx-e.x)*.004;e.vy+=(ty-e.y)*.004;e.vx*=.95;e.vy*=.95;if(!tl&&tick%10==0)eShot({x:e.x+e.w/2+(Math.random()-.5)*60,y:e.y+e.h,w:6,h:6,vx:0,vy:2.2,s:'fireball',life:160});if(!tl&&--e.timer<=0){e.st='idle';e.timer=40}break}
   case'meteor':grav();e.vx=0;if(!e.met){e.met=1;const n=ph>2?6:4;for(let i=0;i<n;i++){const x=i==0?P.x+P.w/2:16+Math.random()*(L.w*8-32),fy=floorAt(x);haz({x:x-10,y:fy-14,w:20,h:14,warn:60+i*8,life:18,kind:'meteor',c:'#ff8a2a'})}}if(--e.timer<=0){e.met=0;rec(60)}break;
-  case'hellslash':if(tl){e.vx*=.8;e.vy=((P.y-4)-e.y)*.06;e.sword=null}else{e.melee=1;e.vx=e.face*4.2;e.vy=0;const reach=Math.round(Math.max(22,e.w*1.35)),swx=e.face>0?e.x+e.w*.45:e.x+e.w*.55-reach,sw={x:swx,y:e.y+e.h*.25,w:reach,h:Math.round(e.h*.65)};e.sword=sw;if(ov(P,sw))hurt(e.dmg,e.x+e.w/2,{e,melee:1});if(tick%5==0)haz({x:e.x+e.w/2-5,y:floorAt(e.x+e.w/2)-6,w:10,h:6,life:120,kind:'fire'});if(tick%2==0)L.parts.push({x:e.x+e.w/2,y:e.y+e.h/2,vx:-e.face,vy:0,life:12,c:'#ff3a5a'});if(--e.timer<=0||e.x<12||e.x>L.w*8-12-e.w){e.vx=0;e.sword=null;rec(55)}}break;
+  case'hellslash':if(tl){e.vx*=.8;e.vy=((P.y-4)-e.y)*.06;e.sword=null}else{e.melee=1;e.vx=e.face*4.2;e.vy=0;const reach=Math.round(Math.max(18,e.w*1.35)),swx=e.face>0?e.x+e.w*.45:e.x+e.w*.55-reach,sw={x:swx,y:e.y+e.h*.25,w:reach,h:Math.round(e.h*.65)};e.sword=sw;if(ov(P,sw))hurt(e.dmg,e.x+e.w/2,{e,melee:1});if(tick%5==0)haz({x:e.x+e.w/2-5,y:floorAt(e.x+e.w/2)-6,w:10,h:6,life:120,kind:'fire'});if(tick%2==0)L.parts.push({x:e.x+e.w/2,y:e.y+e.h/2,vx:-e.face,vy:0,life:12,c:'#ff3a5a'});const dsz=(SP.demon&&SP.demon.dsz)||80,pad=Math.max(12,Math.round((dsz-e.w)/2));if(--e.timer<=0||e.x<pad||e.x>L.w*8-pad-e.w){e.vx=0;e.sword=null;rec(55)}}break;
   case'darkwave':e.vx*=.9;e.vy*=.9;if(!tl){const w=ph>2?2:1,gap=R(24);for(let k=0;k<w;k++)for(let i=0;i<24;i++){if(Math.abs(i-gap)<2)continue;const a=i/24*Math.PI*2+k*.13;eShot({x:e.x+e.w/2,y:e.y+e.h/2,vx:Math.cos(a)*(1.2+k*.6),vy:Math.sin(a)*(1.2+k*.6),s:'orb'})}sfx('spell');shake=6;rec(60)}break;
   case'eclipse':e.vx*=.9;e.vy*=.9;if(!e.las){e.las=1;L.dark=1;L.lasers=L.lasers||[];const a0=Math.atan2(dy,dx);for(let k=0;k<3;k++)L.lasers.push({x:e.x+e.w/2,y:e.y+e.h/2,a:a0+(k-1)*.6,warn:55+k*15,life:26});L.banner={t:90,s:'ECLIPSE!',c:'#e0a0ff'}}if(--e.timer<=0){e.las=0;rec(50)}break;
   default:rec(30)}}
- if(e.ai=='lich'||e.ai=='demon'){e.x=Math.max(8,Math.min((L.w-1)*8-e.w,e.x+e.vx));e.y=Math.max(10,Math.min((L.h-4)*8-e.h,e.y+e.vy))}else if(e.st=='fly'){e.x=Math.max(8,Math.min((L.w-1)*8-e.w,e.x+e.vx));e.y+=e.vy}else{moveX(e);moveY(e)}
+ if(e.ai=='lich'||e.ai=='demon'){e.x=Math.max(8,Math.min((L.w-1)*8-e.w,e.x+e.vx));e.y=Math.max(10,Math.min((L.h-4)*8-e.h,e.y+e.vy));if(e.ai=='demon')clampDemonSprite(e)}else if(e.st=='fly'){e.x=Math.max(8,Math.min((L.w-1)*8-e.w,e.x+e.vx));e.y+=e.vy}else{moveX(e);moveY(e)}
  if(e.st!='charge'&&e.st!='tail'&&e.st!='breath')e.face=Math.sign(dx)||1}
 function stepHaz(){L.haz=L.haz||[];L.lasers=L.lasers||[];for(const h of L.haz){if(h.warn>0){h.warn--;if(h.warn==0&&h.kind=='meteor'){shake=10;sfx('break');burst(h.x+h.w/2,h.y+h.h,'#ff8a2a',24)}if(h.warn==0&&h.kind=='pillar')burst(h.x+h.w/2,h.y+h.h,'#e8ecf4',10);continue}h.life--;if(ov(P,h))hurt(h.dmg,h.x+h.w/2)}L.haz=L.haz.filter(h=>h.life>0);
  for(const l of L.lasers){if(l.warn>0){l.warn--;continue}l.life--;const px=P.x+P.w/2-l.x,py=P.y+P.h/2-l.y,t=px*Math.cos(l.a)+py*Math.sin(l.a),d=Math.abs(-px*Math.sin(l.a)+py*Math.cos(l.a));if(t>0&&d<5)hurt(1,l.x)}L.lasers=L.lasers.filter(l=>l.life>0)}
@@ -1302,6 +1315,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'warlordv3',date:'Nov 24, 2026',t:'Warlord fits the throne',d:'The Warlord is scaled down so his full wingspan, horns, and planted blade stay inside the throne room and the normal camera. Body and hellslash hitboxes shrink with him. His movement is clamped so the wings never leave the arena. Digitigrade greaves and the steel greatsword (fuller, edge, crossguard, hilt) stay crisp. Phases, health, and timings are unchanged.'},
  {id:'warlordv2',date:'Nov 24, 2026',t:'Warlord legs and blade',d:'The Warlord’s shins and boots are redrawn as digitigrade armor: bent knee, angled shin, hock joint, and clawed sabatons with overlapping greaves. His planted greatsword now shows a clear steel blade with fuller, lit and shadowed edges, crossguard, wrapped grip, and pommel, with flames licking along the steel rather than replacing it.'},
  {id:'warlord',date:'Nov 24, 2026',t:'The Demon Lord, remade',d:'The Demon Lord is redrawn as the Warlord: organic crimson plate with gold filigree, digitigrade legs, bat wings with finger bones, a great helm with curled ram horns, and a planted flaming greatsword. His body hitbox matches the new silhouette, and hellslash reach follows the blade. Phases, health, and attack patterns are unchanged.'},
  {id:'artv2',date:'Nov 19, 2026',t:'16-bit craft, same dark vow',d:'The heir, the foes, the elites, the bosses, and the held weapons are redrawn in classic 16-bit RPG craft: hard light from the upper left, polished plate, clear visors, and saturated hell accents. Canvas sizes and grips stay put. The Black Knight keeps his black plate, crimson cape, gold trim, and red cross.'},
@@ -1446,7 +1460,7 @@ function dragonHi(f,open){const c=cvs(64),g=c.getContext('2d'),{r,p,b,line,circ,
  poly(g,[[32,28],[34,2+wy],[42,0+wy],[44,8+wy],[50,10+wy],[42,26]],'#6a1420');g.strokeStyle='#a03040';g.beginPath();g.moveTo(32,28);g.lineTo(42,0+wy);g.stroke();
  return HB(outline(crisp(c)),68)}
 SPF.dragon=[0,1,2,3].map(f=>dragonHi(f));SPF.dragonOpen=[dragonHi(1,1)];SP.dragon=SPF.dragon[0];
-ET.gking.sc=2.6;ET.lich.sc=2.6;ET.dking.sc=3.4;ET.demon.sc=3.6;
+ET.gking.sc=2.6;ET.lich.sc=2.6;ET.dking.sc=3.4;ET.demon.sc=3.0;
 // silhouette cache for rim light
 const RIM=new Map();function rimOf(img,col){const k=img;if(!RIM.has(k)){RIM.set(k,tint(img,col,1))}return RIM.get(k)}
 // --- big knight for cutscenes (48px) ---
@@ -3683,10 +3697,10 @@ const TRAP=(function(){
   // ---- PLANTED FLAMING GREATSWORD — solid steel blade + edge-only flames ----
   const hx=C-36+sw,hy=90+br,tx=C-4+sw,ty=F-2;
   const n=Math.max(Math.abs(tx-hx),Math.abs(ty-hy))||1;
-  // solid steel slab first (bright mid-steel so it never reads as a hollow gap)
+  // solid steel slab first (bright mid-steel; slightly wider so fuller/edge stay crisp at dsz 80)
   for(let i=0;i<=n;i++){
    const t=i/n,x=Math.round(hx+(tx-hx)*t),y=Math.round(hy+(ty-hy)*t);
-   const half=Math.max(3,Math.round(8*(1-t*.5)));
+   const half=Math.max(4,Math.round(9*(1-t*.5)));
    R(x-half,y-1,half*2+1,3,'#2a2430');
    R(x-half+1,y,half*2-1,2,'#4a4458');
    R(x-half+2,y,Math.max(1,half*2-3),1,'#6a6478'); // mid highlight band
@@ -3700,7 +3714,7 @@ const TRAP=(function(){
   // continuous flame tongues licking OUTSIDE the steel (animated by frame)
   for(let i=0;i<=n;i+=3){
    const t=i/n,x=Math.round(hx+(tx-hx)*t),y=Math.round(hy+(ty-hy)*t);
-   const half=Math.max(3,Math.round(8*(1-t*.5)));
+   const half=Math.max(4,Math.round(9*(1-t*.5)));
    const flick=((i+f*5)%7)-3,len=5+((i+f)%4);
    // upper/left tongue
    Ln(x-half-1,y,x-half-2+flick,y-len,2.2,Fl[1]);
@@ -3733,7 +3747,8 @@ const TRAP=(function(){
    Ln(fx,fy,fx-1,fy+6,2.2,Hn[3]);R(fx-1,fy+6,1,1,Hn[4]);
   }
   if(v>=2&&(f%2==0))for(const[x,y]of[[C-22,48],[C+24,46],[C-6,38],[C+12,72]])R(x+sw,y+br,1,1,Fl[3]);
-  return fin(v==3?100:96);
+  // dsz 80/84 (was 96/100): ~17% smaller so full wingspan fits throne camera; art stays 176px NN
+  return fin(v==3?84:80);
  };
 
  SPF.gking=[0,1,2,3].map(gking3);SPF.lich=[0,1,2,3].map(lich3);SPF.dragon=[0,1,2,3].map(f=>dragon3(f));SPF.dragonOpen=[dragon3(1,1)];
