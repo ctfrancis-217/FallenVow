@@ -48,7 +48,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-19-art-v2';
+const BUILD='2026-11-24-demonlord-v3';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -1302,6 +1302,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'demonlordv3',date:'Nov 24, 2026',t:'The Demon Lord, redrawn',d:'The final boss alone is redrawn in detailed 16-bit craft: dark red and black ornate plate with gold trim, curved horns, burning eyes, bat wings, and a fiery staff. All frames and phases stay on the same canvas sizes. Hitboxes, attack timings, telegraphs, phase behavior, saves, and purchases are unchanged. Other sprites stay as they were.'},
  {id:'artv2',date:'Nov 19, 2026',t:'16-bit craft, same dark vow',d:'The heir, the foes, the elites, the bosses, and the held weapons are redrawn in classic 16-bit RPG craft: hard light from the upper left, polished plate, clear visors, and saturated hell accents. Canvas sizes and grips stay put. The Black Knight keeps his black plate, crimson cape, gold trim, and red cross.'},
  {id:'savelock',date:'Nov 16, 2026',t:'The same reward, one writer',d:'Leave a boss relic, a chest, a campfire, or a roadside event open and it is waiting when you return, with the same choices. The gold from a chest is counted once. A second tab cannot overwrite the run. Take the run over there and the first tab stops saving.'},
  {id:'resumeroom',date:'Nov 16, 2026',t:'The fight is where you left it',d:'Leave a room unfinished and come back, and the same foes are waiting at the same health, with the coins still on the floor. You stand where you left off, or on the nearest open ground if that spot is solid. On the road, the message log sits above the map buttons. On a phone, every relic icon stays large enough to see and stays off the Fullscreen button.'},
@@ -2399,7 +2400,8 @@ function themeBG(){const th=THM(),B=L.bg;if(!B||B.th)return;B.th=1;const LH=L.h*
    else if(k<.6){/*dragon skull*/R('#c8b898',x,floor-10,16,8);R('#e8dcc0',x+1,floor-10,14,2);R('#1a0a06',x+3,floor-8,3,3);R('#c8b898',x+14,floor-6,8,4);for(let i=0;i<3;i++)R('#e8dcc0',x+15+i*2,floor-2,1,2);R('#8a7a5a',x-4,floor-14,6,2);R('#8a7a5a',x-6,floor-17,3,3)}
    else{/*claw marks on far wall*/for(let i=0;i<3;i++){gf.strokeStyle='rgba(10,4,2,.8)';gf.lineWidth=2;gf.beginPath();gf.moveTo(x+i*6,30+rn()*20);gf.lineTo(x+i*6+16,70+rn()*30);gf.stroke();gf.strokeStyle='rgba(255,120,40,.35)';gf.lineWidth=.8;gf.stroke()}}}
   if(th.n=='throne'){if(k<.5){/*red banner w/ gold*/R('#c9a24a',x-8,8,18,2);R('#6a0a14',x-6,10,14,40);R('#a01628',x-5,11,12,36);R('#c9a24a',x-6,10,1,40);R('#c9a24a',x+7,10,1,40);P_d(g,x,48);R('#ffd24a',x-1,22,4,6)}
-   else{/*gold-trimmed marble pillar inlay*/R('#2a1a3a',x,8,8,floor-8);R('#4a3060',x+1,8,2,floor-8);R('#c9a24a',x-1,6,10,2);R('#c9a24a',x-1,floor-2,10,2)}}}
+   else{/*gold-trimmed marble pillar inlay*/R('#2a1a3a',x,8,8,floor-8);R('#4a3060',x+1,8,2,floor-8);R('#c9a24a',x-1,6,10,2);R('#c9a24a',x-1,floor-2,10,2)}
+   /*decorative lava cracks / embers on the floor — props only, no collision*/if(k<.55){let cx0=x+rn()*8,cy=floor-1;for(let i=0;i<7;i++){R(i%2?'#ff6a1a':'#c02808',cx0,cy,2,1);R('#ffd24a',cx0+(i%2),cy,1,1);cx0+=(rn()-.35)*5;cy-=(rn()<.4?1:0)}R('#3a0a08',x-1,floor-1,4,1)}}}
 propsFinish(B)}
 function propsFinish(B){const th=THM(),pc=B.props,d=document.createElement('canvas');d.width=pc.width;d.height=pc.height;const g=d.getContext('2d');g.filter='saturate(.75) brightness(.92)';g.drawImage(pc,0,0);g.filter='none';B.props=d;
  const rc=document.createElement('canvas');rc.width=pc.width;rc.height=pc.height;const r=rc.getContext('2d');r.drawImage(pc,0,0);r.globalCompositeOperation='source-in';r.fillStyle=`rgb(${th.glow})`;r.fillRect(0,0,rc.width,rc.height);B.propsRim=rc}
@@ -3517,21 +3519,79 @@ const TRAP=(function(){
   if(!ho){P([[66,56],[74,0+wy],[96,-2+wy],[104,10+wy],[116,14+wy],[100,34],[86,52]],'#5a1018');for(const[a,b]of[[74,0],[96,-2],[116,14]]){Ln(66,56,a,b+wy,2.5,'#c87058');}for(const[a,b]of[[84,30],[100,26]])E(a,b+wy*.5,2,2,'#2a0a10');
   }return fin(85)}
  demon3=function(v,f){const{g,P,E,SE,Ln,Q,R,glow,horn,fin}=BK(),br=[0,1,2,1][f],sw=[0,2,0,-2][f];
-  const sk=v==3?['#3a0406','#7a1014','#c02428','#ff5a40']:['#2a060c','#5a0e18','#9a1c28','#e04048'],gd='#e8b440',rb='#1a0c20',eye=v==1?'#ffd24a':v==2?'#ff8a1a':'#ffffff';
-  const ws=v==1?.6:v==2?.9:1.15;for(const s of[-1,1]){const W=(x,y)=>[64+s*x*ws,y+br-(v==3?sw*2:0)];P([W(8,44),W(26,14),W(48,4),W(60,14),W(54,24),W(60,40),W(48,50),W(52,68),W(36,66),W(32,86),W(14,70)],v==3?'#140408':'#220c18');for(const[a,b]of[[26,14],[48,4],[60,40],[52,68]])Ln(64+s*8*ws,44+br,64+s*a*ws,b+br,2,v==3?'#5a1a20':'#4a2030');if(v>=2)for(const[x,y]of[[40,30],[46,56],[30,48]])E(64+s*x*ws,y+br,2.5,2.5,'rgba(0,0,0,1)')}
-  if(v>=2)glow(64,60,46,v==3?'rgba(255,60,20,.45)':'rgba(255,120,30,.3)');
-  P([[40,56+br],[88,56+br],[104,124],[90,118],[80,126],[64,118],[48,126],[38,118],[24,124]],rb);P([[52,62+br],[76,62+br],[84,120],[44,120]],'#3e1c46');R(52,62+br,24,1,'#5a2e62');Ln(64,64,64,120,3,gd);
-  if(v==3){for(let i=0;i<6;i++)Q([[30+i*14,124],[32+i*14+sw,110],[28+i*14,98]],3,'#ff6a1a')}
-  SE(64,60+br,22,18,['#160812','#2e1428','#4a2440']);R(42,48+br,44,3,gd);R(42,48+br,44,1,'#ffe27a');R(42,72+br,44,3,gd);const rc=['#8a3ad0','#b05ae0','#e0a0ff','#b05ae0'][f];
-  if(v<3){for(const[x,y]of[[56,56],[64,52],[72,56],[60,64],[68,64]])E(x,y+br,1.8,1.8,rc);Ln(54,60+br,74,60+br,1.5,rc)}else{glow(64,60+br,18,'rgba(255,200,80,.9)');E(64,60+br,7,9,'#ffd24a');E(64,60+br,4,6,'#ffffff');for(let i=0;i<6;i++){const a=i*1.05;Ln(64,60+br,64+Math.cos(a)*20,60+br+Math.sin(a)*16,1.5,'#ff8a2a')}}
-  for(const s of[-1,1]){const x=64+s*28;SE(x,50+br,12,10,['#220c18','#3e1830','#5a2848']);R(x-10,44+br,20,1,'#7a3a60');for(let k=0;k<3;k++)P([[x-4+k*4,44+br],[x+s*(6+k*4),30+br-k*3],[x+k*4,46+br]],'#e8dcc0');R(x-10,52+br,20,2,gd)}
-  const arms=v==3?[[36,0],[30,14]]:[[36,0]];for(const[ax,ay]of arms)for(const s of[-1,1]){const x=64+s*ax;Q([[x,58+br+ay],[x+s*6,74+br+ay],[x+s*4,90+br+ay]],8,sk[1]);SE(x+s*4,92+br+ay,6,5,sk);for(let k=0;k<4;k++)Ln(x+s*4-4+k*2.6,95+br+ay,x+s*6-4+k*2.6,103+br+ay,2,'#f0e0c0')}
-  if(v<3){SE(64,30+br,15,16,sk);R(52,20+br,24,14,sk[2]);R(54,20+br,20,1,sk[3]);E(64,42+br,12,5,sk[0]);Ln(52,24+br,60,28+br,2.5,'#1a0408');Ln(76,24+br,68,28+br,2.5,'#1a0408');for(const x of[57,71]){E(x,30+br,4,2.5,eye);R(x-1,29+br,2,1,'#ffffff')}glow(57,30+br,6,'rgba(255,200,60,.6)');glow(71,30+br,6,'rgba(255,200,60,.6)');E(64,42+br,8,v==2?4:2.5,'#1a0408');for(const x of[58,62,66,70])P([[x,40+br],[x+2,40+br],[x+1,44+br]],'#fff6e0');
-   P([[50,18+br],[78,18+br],[76,22+br],[52,22+br]],gd);R(50,18+br,28,1,'#ffe27a');for(let i=0;i<5;i++)P([[52+i*6,19+br],[55+i*6,8+br-(i==2?5:0)],[58+i*6,19+br]],gd);E(64,14+br,1.8,1.8,'#e0403a');
-   if(v==2){Q([[54,20+br],[58,32+br],[56,40+br]],1.5,'#ff8a2a');Q([[74,20+br],[70,34+br]],1.5,'#ff8a2a')}}
-  else{SE(64,30+br,16,17,['#4a3a38','#8a7a70','#d8c8b8']);R(50,20+br,28,1,'#f0e0d0');for(const x of[57,71]){E(x,30+br,5,6,'#05020a');E(x,31+br,2.5,2.5,'#ffffff');}glow(57,31+br,10,'rgba(255,90,30,.9)');glow(71,31+br,10,'rgba(255,90,30,.9)');P([[61,38+br],[67,38+br],[64,42+br]],'#05020a');E(64,46+br,10,5,'#05020a');for(let x=56;x<=72;x+=3)P([[x,43+br],[x+2,43+br],[x+1,49+br]],'#fff6e0');Q([[52,20+br],[58,34+br]],1.5,'#ff6a1a');Q([[76,22+br],[70,36+br],[72,44+br]],1.5,'#ff6a1a')}
-  const hl=v==1?14:v==2?18:24;horn(54,18+br,-1,hl,6,.11,['#2a2024','#7a6a5e','#e8dcc0']);horn(74,18+br,1,hl,6,.11,['#2a2024','#7a6a5e','#e8dcc0']);
-  if(v==3){horn(56,24+br,-1,10,4,-.05,['#2a2024','#7a6a5e','#e8dcc0']);horn(72,24+br,1,10,4,-.05,['#2a2024','#7a6a5e','#e8dcc0'])}
+  // dark red / black plate ramp + gold; eyes burn hotter each phase
+  const sk=v==3?['#2a0204','#6a0c10','#b01820','#e83830','#ff7a58']:['#1a0408','#3a0a10','#6a141c','#a82028','#e84840'];
+  const plate=v==3?['#100204','#28080c','#4a1018','#7a1c24','#b03030']:['#0c0206','#1c060a','#341014','#5a1c22','#8a2a30'];
+  const gd='#c9a24a',gdh='#ffe27a',gdl='#7a5418',eye=v==1?'#ff3a2a':v==2?'#ff8a1a':'#ffffff',ws=v==1?.72:v==2?.98:1.22;
+  // ---- bat wings (behind): scalloped membrane + bone spars, larger / torn in later phases ----
+  for(const s of[-1,1]){const W=(x,y)=>[64+s*x*ws,y+br-(v==3?sw*2:0)];
+   // outer membrane with scalloped trailing edge (classic bat silhouette)
+   P([W(6,46),W(18,20),W(34,4),W(50,0),W(60,10),W(58,24),W(62,38),W(54,48),W(60,58),W(50,64),W(56,78),W(42,72),W(46,90),W(30,80),W(24,96),W(12,78),W(8,60)],v==3?'#100208':'#18060c');
+   P([W(10,46),W(20,24),W(34,10),W(48,6),W(54,16),W(52,30),W(56,42),W(48,50),W(52,60),W(42,64),W(46,76),W(34,70),W(36,86),W(22,74),W(16,58)],v==3?'#2a0a12':'#3a1018');
+   // bone spars from shoulder to tips
+   for(const[a,b]of[[18,20],[34,4],[50,0],[58,24],[56,78],[24,96]])Ln(64+s*6*ws,46+br,64+s*a*ws,b+br,2.4,v==3?'#7a2430':'#5a2030');
+   Ln(64+s*18*ws,20+br,64+s*42*ws,72+br,1.5,'#4a1420');Ln(64+s*34*ws,4+br,64+s*52*ws,60+br,1.3,'#4a1420');
+   // membrane highlight ridge (UL craft)
+   R(64+s*16*ws-1,22+br,2,1,v==3?'#5a1820':'#6a2430');R(64+s*30*ws-1,10+br,2,1,'#6a2430');
+   if(v>=2)for(const[x,y]of[[36,28],[48,52],[28,60],[44,40],[40,78]])E(64+s*x*ws,y+br,3,2.5,'#050204');
+   if(v==3){for(const[x,y]of[[50,18],[46,44],[38,70]]){glow(64+s*x*ws,y+br,6,'rgba(255,80,20,.55)');R(64+s*x*ws-1,y+br-1,2,2,'#ff8a2a')}}}
+  if(v>=2)glow(64,58+br,48,v==3?'rgba(255,50,16,.5)':'rgba(255,100,28,.32)');
+  // ---- fiery staff (behind right arm): tall shaft + burning head ----
+  {const sx=92+sw,sy=118,tx=98+sw*.5,ty=6+br;Ln(sx,sy,tx,ty,5,'#2a1408');Ln(sx,sy,tx,ty,3,'#5a3a18');Ln(sx,sy,tx,ty,1.4,'#8a6a30');
+   R(tx-2,ty+20,5,3,gd);R(tx-2,ty+20,5,1,gdh);R(tx-1,ty+22,3,2,gdl);
+   glow(tx,ty+4,16,v==3?'rgba(255,90,20,.95)':'rgba(255,140,40,.75)');
+   E(tx,ty+2,7,8,'#c02808');E(tx,ty+1,5,6,'#ff6a1a');E(tx,ty,3,4,'#ffd24a');E(tx,ty-1,1.5,2,'#ffffff');
+   for(let i=0;i<5;i++){const a=f*.7+i*1.25,rr=8+i;R(tx+Math.cos(a)*rr-1,ty+Math.sin(a)*rr*.7-1,2,2,i%2?'#ff8a2a':'#ffe27a')}
+   if(v>=2)for(let i=0;i<4;i++)R(tx-1+(i%2),ty+10+i*8+((f+i)%2),2,3,i%2?'#ff6a1a':'#ffd24a')}
+  // ---- tattered cloak / lower robe: black-red, gold spine ----
+  P([[38,54+br],[90,54+br],[108,124],[94,116],[84,126],[72,118],[64,126],[56,118],[44,126],[34,116],[20,124]],'#12040a');
+  P([[48,58+br],[80,58+br],[90,122],[38,122]],v>=2?'#3a0c14':'#2a0810');
+  R(48,58+br,32,1,plate[3]);Ln(64,60+br,64,122,3,gd);Ln(64,60+br,64,122,1,gdh);
+  for(let i=0;i<8;i++){const x=28+i*10+sw*(i%2?1:-1),h=4+((i*5+f)%5);P([[x,124],[x+3,124],[x+1,124-h]],'#1a0608')}
+  if(v==3){for(let i=0;i<6;i++)Q([[28+i*14,124],[30+i*14+sw,108],[26+i*14,94]],2.5,'#ff6a1a');for(let i=0;i<5;i++)R(34+i*12,120-((f+i)%3),2,2,'#ffd24a')}
+  // ---- ornate breastplate: dark red plate, gold trim, hard UL light ----
+  SE(64,60+br,24,20,plate);R(44,46+br,40,4,gd);R(44,46+br,40,1,gdh);R(44,46+br,1,4,gdh);R(83,46+br,1,4,gdl);
+  R(46,50+br,36,18,plate[2]);R(48,50+br,14,16,plate[3]);R(48,50+br,4,14,plate[4]);R(66,50+br,14,16,plate[1]);
+  R(44,72+br,40,3,gd);R(44,72+br,40,1,gdh);R(58,48+br,12,2,gdl);
+  // chest sigil: phase 1-2 purple runes; phase 3 furnace heart
+  const rc=['#8a2ad0','#b05ae0','#e0a0ff','#b05ae0'][f];
+  if(v<3){for(const[x,y]of[[56,56],[64,52],[72,56],[60,64],[68,64],[64,60]])E(x,y+br,2,2,rc);Ln(54,60+br,74,60+br,1.6,rc);R(62,54+br,4,8,gd);R(60,58+br,8,2,gd)}
+  else{glow(64,60+br,20,'rgba(255,160,40,.95)');E(64,60+br,8,10,'#ff6a1a');E(64,60+br,5,7,'#ffd24a');E(64,60+br,2.5,4,'#ffffff');
+   for(let i=0;i<8;i++){const a=i*.785+f*.2;Ln(64,60+br,64+Math.cos(a)*22,60+br+Math.sin(a)*18,1.4,'#ff8a2a')}}
+  if(v>=2){Q([[48,50+br],[54,66+br],[50,74+br]],1.5,'#ff8a2a');Q([[80,50+br],[74,68+br],[78,76+br]],1.5,'#ff8a2a')}
+  // ---- spiked gold pauldrons ----
+  for(const s of[-1,1]){const x=64+s*30;SE(x,48+br,14,12,plate);R(x-12,42+br,24,1,plate[4]);R(x-12,50+br,24,2,gd);R(x-12,50+br,24,1,gdh);
+   for(let k=0;k<4;k++)P([[x-6+k*4,42+br],[x+s*(8+k*5),26+br-k*4],[x-2+k*4,44+br]],k%2?'#e8dcc0':gdh);
+   R(x-4,46+br,8,2,gdl);E(x,46+br,2,2,'#e0403a')}
+  // ---- arms + claws (phase 3 grows a second pair) ----
+  const arms=v==3?[[38,0],[32,16]]:[[38,0]];
+  for(const[ax,ay]of arms)for(const s of[-1,1]){const x=64+s*ax,hold=s>0&&ay===0; // right primary arm grips staff
+   Q([[x,56+br+ay],[x+s*(hold?10:6),72+br+ay],[x+s*(hold?8:4),92+br+ay]],9,sk[1]);
+   R(x-4,56+br+ay,8,1,sk[3]);SE(x+s*(hold?8:4),94+br+ay,7,6,sk);
+   for(let k=0;k<4;k++)Ln(x+s*(hold?8:4)-5+k*2.8,97+br+ay,x+s*(hold?10:6)-5+k*2.8,106+br+ay+(hold?-2:0),2.2,'#f0e0c0');
+   R(x-6,70+br+ay,12,3,plate[2]);R(x-6,70+br+ay,12,1,gd)}
+  // ---- head: red flesh / bone skull in phase 3, burning eyes, fangs ----
+  if(v<3){SE(64,28+br,16,17,sk);R(50,18+br,28,16,sk[2]);R(52,18+br,24,1,sk[4]);R(52,18+br,8,14,sk[3]);E(64,42+br,13,6,sk[0]);
+   Ln(50,22+br,60,28+br,3,'#1a0408');Ln(78,22+br,68,28+br,3,'#1a0408');
+   for(const x of[56,72]){glow(x,28+br,8,v==1?'rgba(255,60,40,.75)':'rgba(255,140,40,.85)');E(x,28+br,5,3.2,eye);R(x-1,27+br,3,2,'#ffffff');R(x,27+br,1,1,'#fff6e0')}
+   E(64,42+br,9,v==2?5:3,'#120204');for(const x of[56,60,64,68,72])P([[x,40+br],[x+2,40+br],[x+1,45+br]],'#fff6e0');
+   // gold crown
+   P([[48,16+br],[80,16+br],[78,22+br],[50,22+br]],gd);R(48,16+br,32,1,gdh);R(48,21+br,32,1,gdl);
+   for(let i=0;i<5;i++)P([[50+i*6,17+br],[53+i*6,6+br-(i==2?6:i%2?2:0)],[56+i*6,17+br]],i%2?gdh:gd);
+   E(64,12+br,2.2,2.2,'#e0403a');E(64,12+br,1,1,'#ffd24a');
+   if(v==2){Q([[52,18+br],[58,34+br],[54,42+br]],1.6,'#ff8a2a');Q([[76,18+br],[70,36+br],[74,44+br]],1.6,'#ff8a2a');
+    for(const[x,y]of[[48,36],[80,36],[60,48]])R(x,y+br,2,2,'#ffd24a')}}
+  else{SE(64,28+br,17,18,['#3a2e2c','#7a6a60','#c8b8a8','#efe4d4']);R(50,18+br,28,1,'#ffffff');
+   for(const x of[56,72]){E(x,28+br,6,7,'#050204');E(x,29+br,3,3,'#ffffff');glow(x,29+br,12,'rgba(255,70,20,.95)');R(x-1,28+br,2,1,'#ffd24a')}
+   P([[60,38+br],[68,38+br],[64,43+br]],'#050204');E(64,46+br,11,6,'#050204');
+   for(let x=54;x<=74;x+=3)P([[x,42+br],[x+2,42+br],[x+1,50+br]],'#fff6e0');
+   Q([[50,18+br],[58,36+br],[52,48+br]],1.6,'#ff6a1a');Q([[78,18+br],[70,38+br],[76,50+br]],1.6,'#ff6a1a');
+   for(const[x,y]of[[46,32],[82,32],[64,52]]){glow(x,y+br,5,'rgba(255,100,20,.7)');R(x,y+br,2,2,'#ffd24a')}}
+  // ---- large curved ram horns (grow / branch by phase) ----
+  const hl=v==1?16:v==2?22:28;horn(52,16+br,-1,hl,7,.12,['#1a1214','#6a5a4e','#e8dcc0']);horn(76,16+br,1,hl,7,.12,['#1a1214','#6a5a4e','#e8dcc0']);
+  if(v>=2){horn(50,22+br,-1,10,4,.08,['#1a1214','#6a5a4e','#e8dcc0']);horn(78,22+br,1,10,4,.08,['#1a1214','#6a5a4e','#e8dcc0'])}
+  if(v==3){horn(54,26+br,-1,12,4,-.06,['#1a1214','#6a5a4e','#e8dcc0']);horn(74,26+br,1,12,4,-.06,['#1a1214','#6a5a4e','#e8dcc0']);
+   glow(64,8+br,14,'rgba(255,60,20,.55)')}
   return fin(v==3?74:66)}
  SPF.gking=[0,1,2,3].map(gking3);SPF.lich=[0,1,2,3].map(lich3);SPF.dragon=[0,1,2,3].map(f=>dragon3(f));SPF.dragonOpen=[dragon3(1,1)];
  ['demon','demon2','demon3'].forEach((k,i)=>SPF[k]=[0,1,2,3].map(f=>demon3(i+1,f)));
