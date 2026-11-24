@@ -48,7 +48,7 @@ const cv=document.getElementById('c'),cx=cv.getContext('2d');let VW,VH,Z,TS;
 function resize(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;Z=Math.max(2,Math.floor(VH/(8*17)));TS=8*Z;cx.imageSmoothingEnabled=false}
 addEventListener('resize',resize);resize();
 const R=n=>Math.floor(Math.random()*n),$=id=>document.getElementById(id);
-const BUILD='2026-11-24-demonlord-warlord-v4';
+const BUILD='2026-11-24-hitbox-sync';
 // Local diagnostic log only. Nothing here is uploaded. The player exports a text file if they want to share it.
 const DIAG=(function(){
  const KEY='crypt_diag',MAX_NOTES=40,MAX_ERRS=20,MAX_JSON=48000;
@@ -355,14 +355,25 @@ function paintWeapon(id){const c=cvs(48),g=c.getContext('2d');g.imageSmoothingEn
  if(id=='bow'){const a=cvs(16),ag=a.getContext('2d');ag.imageSmoothingEnabled=false;const A=PX(ag);
   A.r(1,7,10,1,'#c08040');A.r(1,8,10,1,'#1c100a');A.r(11,6,3,3,'#c8cfd8');A.p(13,6,'#f4f7fb');A.p(14,7,'#f4f7fb');A.p(13,8,'#2a3142');A.p(1,6,'#e8b070');A.p(2,6,'#e8b070');A.p(1,9,'#6b3c1c');SP.arrow=outline(a)}
  return o}
-function wepHit(){const t=P.atkT,id=P.wep||'sword',k=QW().kind;P.wShape=null;const go=(shape,dmg,sub)=>{P.wShape=shape;return{dmg,sub,shape}};
- if(id=='sword')return t<=12&&t>=6?go('slash',1,0):null;
+function wepProg(){const len=P.mvLen||MV.atkT||14;return{len,t:P.atkT,u:P.atkT>0?1-P.atkT/len:1}}
+function wepWinSpec(){const id=P.wep||'sword',k=QW().kind;
+ if(k=='cleave')return{lo:.18,hi:.88,shape:'chop',dmg:1,sub:0,impact:.42};
+ if(k=='sweep')return[{lo:.12,hi:.44,shape:'sweep',dmg:.65,sub:0},{lo:.56,hi:.75,shape:'hook',dmg:.35,sub:1}];
+ if(id=='gs')return{lo:.18,hi:.78,shape:'arc',dmg:1,sub:0};
+ if(k=='ultra')return{lo:.22,hi:.86,shape:'cleave',dmg:1,sub:0,impact:.4};
+ if(id=='sword'||k=='swing')return{lo:.15,hi:.72,shape:'slash',dmg:1,sub:0};
+ return{lo:.15,hi:.72,shape:'slash',dmg:1,sub:0}}
+function wepActiveWin(){const k=QW().kind;if(k=='bow')return null;if(k=='thrust'){const sp=spearPose();return sp&&sp.hit?{lo:.18,hi:.78,u:wepProg().u,shape:sp.shape||'thrust',dmg:sp.dmg,sub:sp.sub}:null}
+ const {u,len}=wepProg(),spec=wepWinSpec(),list=Array.isArray(spec)?spec:[spec];
+ for(const w of list)if(u>=w.lo&&u<=w.hi)return{lo:w.lo,hi:w.hi,u,len,shape:w.shape,dmg:w.dmg,sub:w.sub,impact:w.impact};return null}
+function wepHitActive(){return!!wepActiveWin()}
+function wepHit(){const id=P.wep||'sword',k=QW().kind;P.wShape=null;const go=(shape,dmg,sub)=>{P.wShape=shape;return{dmg,sub,shape}};
  if(k=='thrust'){const sp=spearPose();if(!sp)return null;if(sp.vx)P.vx+=P.face*sp.vx;return sp.hit?go(sp.shape||'thrust',sp.dmg,sp.sub):null}
- if(k=='cleave'){if(t==9){shake=Math.max(shake,6);for(let i=0;i<8;i++)L.parts.push({x:P.x+P.face*(8+i*2),y:P.y+P.h,vx:P.face*(.5+Math.random()),vy:-.5-Math.random()*.8,life:14,c:i%2?'#b8a888':'#6a5848'})}if(t<=9&&t>=6)return go('chop',1,0);return null}
- if(k=='sweep'){if(t<=14&&t>=9)return go('sweep',.65,0);if(t<=7&&t>=4)return go('hook',.35,1);return null}
- if(id=='gs'){if(t<=11&&t>=7)return go('arc',1,0);return null}
- if(k=='ultra'){const len=P.mvLen||MV.atkT,u=1-t/len;if(t==11){shake=Math.max(shake,12);for(let i=0;i<12;i++)L.parts.push({x:P.x+P.face*(4+i*3),y:P.y+P.h-1,vx:P.face*(.8+Math.random()*1.6),vy:-1.2-Math.random()*1.6,life:18,c:i%3?'#3a404c':'#8a929e'})}if(u>=.48&&u<=.86)return go('cleave',1,0);return null}
- return t<=12&&t>=6?go('slash',1,0):null}
+ if(k=='bow')return null;
+ const {u,len}=wepProg(),spec=wepWinSpec(),list=Array.isArray(spec)?spec:[spec];
+ for(const w of list){if(w.impact!=null&&Math.abs(u-w.impact)<.5/Math.max(1,len)){if(k=='cleave'){shake=Math.max(shake,6);for(let i=0;i<8;i++)L.parts.push({x:P.x+P.face*(8+i*2),y:P.y+P.h,vx:P.face*(.5+Math.random()),vy:-.5-Math.random()*.8,life:14,c:i%2?'#b8a888':'#6a5848'})}if(k=='ultra'){shake=Math.max(shake,12);for(let i=0;i<12;i++)L.parts.push({x:P.x+P.face*(4+i*3),y:P.y+P.h-1,vx:P.face*(.8+Math.random()*1.6),vy:-1.2-Math.random()*1.6,life:18,c:i%3?'#3a404c':'#8a929e'})}}
+  if(u>=w.lo&&u<=w.hi)return go(w.shape,w.dmg,w.sub)}
+ return null}
 function wPic(id){const k=WEAPONS[id]?id:'sword';if(!WURL[k])paintWeapon(k);return WURL[k]}
 function QW(){return WEAPONS[(P&&P.wep)||'sword']||WEAPONS.sword}
 function wStat(id){const w=WEAPONS[id]||WEAPONS.sword;return `Dmg ${Math.round(w.dmg*100)}% \u00b7 Spd ${Math.round(w.spd*100)}% \u00b7 Reach ${Math.round(w.reach*100)}% \u00b7 Stagger ${Math.round(w.stag*100)}%`}
@@ -687,9 +698,11 @@ function hurt(d,srcX,src){if(P&&P.parryT>0&&src&&src.melee&&src.e){tryParryMelee
  L.fx.push({x:P.x,y:P.y-4,t:tick,s:'-'+d,c:'#ff5050'});log(`You take ${d} damage!`,'#f66');if(P.hp<=0){P.hp=0;die()}}
 function swordBox(){const d=P.atkDir,g=(has('gsword')?1.4:1)*Math.max(1,P.ds),r=Math.round(17*g);if(d=='low'){const w=r+8;return{x:P.face>0?P.x-2:P.x+P.w+2-w,y:P.y+P.h-7,w,h:9}}return d=='up'?{x:P.x-4,y:P.y+1-r,w:P.w+8,h:r}:d=='down'?{x:P.x-4,y:P.y+P.h-1,w:P.w+8,h:r}:{x:P.face>0?P.x+P.w-1:P.x-r,y:P.y-4,w:r+1,h:P.h+7}}
 function handWorld(){const ds=P.ds||1,sx=P.sx||1,sy=P.sy||1,w=20*ds*sx,h=20*ds*sy,fx=P.x+P.w/2,fy=P.y+P.h+ds*1.25,top=fy-h,bob=P._hb||0,px=w/64,py=h/64;return{x:P.face<0?fx+w/2-42.5*px:fx-w/2+42.5*px,y:top+(42.5+bob)*py}}
-function ugsBladeBoxes(){if(!WIMG.ugs)paintWeapon('ugs');const hw=handWorld(),ang=wepAng(),face=P.face||1,ps=20*1.6/72,g=WGRIP.ugs,tip=70,ca=Math.cos(ang),sa=Math.sin(ang),pts=[];for(let i=0;i<6;i++){const lx=(tip-g.x)*ps*i/5;let rx=lx*ca,ry=lx*sa;if(face<0)rx=-rx;pts.push({x:hw.x+rx,y:hw.y+ry})}const rad=3.2;return pts.map(p=>({x:p.x-rad,y:p.y-rad,w:rad*2,h:rad*2}))}
-function spearBladeBoxes(){const sp=spearPose();if(!sp||sp.shape=='thrust'||sp.shape=='plunge')return [];if(!WIMG.spear)paintWeapon('spear');const hw=handWorld(),face=P.face||1,ps=20/48,grip=5.5,tip=42,ang=sp.ang||0,ca=Math.cos(ang),sa=Math.sin(ang),shift=(sp.ext||0)*.5*(tip-grip)*ps,lung=(sp.lunge||0)*face,hx=hw.x+lung,hy=hw.y,pts=[];for(let i=0;i<6;i++){const lx=shift+(tip-grip)*ps*i/5;let rx=lx*ca,ry=lx*sa;if(face<0)rx=-rx;pts.push({x:hx+rx,y:hy+ry})}const rad=3.2;return pts.map(p=>({x:p.x-rad,y:p.y-rad,w:rad*2,h:rad*2}))}
-function attackTouch(o){if(!o||!P)return false;if(P.wShape=='cleave')return ugsBladeBoxes().some(b=>ov(b,o));if(P.wShape=='spearup'||P.wShape=='spearspin')return spearBladeBoxes().some(b=>ov(b,o));const b=swordBox();return !!(b&&ov(b,o))}
+const BLADE_META={sword:{tip:33,src:48,big:1,rad:2.6},axe:{tip:45,src:48,big:1,rad:3.4},spear:{tip:42,src:48,big:1,rad:2.8},halb:{tip:46,src:48,big:1,rad:3.0},gs:{tip:41,src:48,big:1,rad:3.0},ugs:{tip:70,src:72,big:1.6,rad:3.2}};
+function ugsBladeBoxes(){return meleeBladeBoxes('ugs')}
+function spearBladeBoxes(){const sp=spearPose();if(!sp)return [];if(!WIMG.spear)paintWeapon('spear');const hw=handWorld(),face=P.face||1,ps=20/48,grip=(WGRIP.spear&&WGRIP.spear.x)||5.5,tip=42,ang=sp.ang||0,ca=Math.cos(ang),sa=Math.sin(ang),shift=(sp.ext||0)*.5*(tip-grip)*ps,lung=(sp.lunge||0)*face,hx=hw.x+lung,hy=hw.y,pts=[];for(let i=0;i<6;i++){const lx=shift+(tip-grip)*ps*i/5;let rx=lx*ca,ry=lx*sa;if(face<0)rx=-rx;pts.push({x:hx+rx,y:hy+ry})}const rad=2.8;return pts.map(p=>({x:p.x-rad,y:p.y-rad,w:rad*2,h:rad*2}))}
+function meleeBladeBoxes(forceId){if(!P||!(P.atkT>0))return [];const id=forceId||P.wep||'sword';if(id=='bow')return [];if((!forceId&&QW().kind=='thrust')||id=='spear')return spearBladeBoxes();if(!WIMG[id])paintWeapon(id);const m=BLADE_META[id]||BLADE_META.sword,hw=handWorld(),ang=wepAng(),face=P.face||1,ps=20*m.big/m.src,g=WGRIP[id]||{x:5.5},tip=m.tip,ca=Math.cos(ang),sa=Math.sin(ang),pts=[];for(let i=0;i<6;i++){const lx=(tip-g.x)*ps*i/5;let rx=lx*ca,ry=lx*sa;if(face<0)rx=-rx;pts.push({x:hw.x+rx,y:hw.y+ry})}const rad=m.rad;return pts.map(p=>({x:p.x-rad,y:p.y-rad,w:rad*2,h:rad*2}))}
+function attackTouch(o){if(!o||!P)return false;if(P.wShape&&QW().kind!='bow'){const boxes=meleeBladeBoxes();if(boxes.length)return boxes.some(b=>ov(b,o))}const b=swordBox();return !!(b&&ov(b,o))}
 function burst(x,y,c,n=8){for(let i=0;i<n;i++)L.parts.push({x,y,vx:(Math.random()-.5)*3,vy:(Math.random()-.8)*3,life:20+R(20),c})}
 function openChest(c){if(c.open)return;if(c.kind=='fairy'){if(c.fail){log('This fairy chest is sealed.','#6fe8ff');return}if(!L.cleared){log('Clear the room to unseal the fairy chest!','#6fe8ff');return}}
  c.open=1;sfx('open');burst(c.x+4,c.y+2,c.kind=='fairy'?'#6fe8ff':'#ffd24a',24);const g=addGold((c.kind=='fairy'?30:c.big?30:12)+R(12)+act*6);log(`Chest opened: +${g} gold!`,'#ffd24a');
@@ -995,8 +1008,8 @@ function drawLevel(){const vw=VW/Z,vh=VH/Z,LW=L.w*8,LH=L.h*8;const ck=1-Math.pow
   const sx=P.sx||1,sy=P.sy||1,w=sz*sx,h=sz*sy,spL=spearPose(),fx=P.x+P.w/2+(spL?spL.lunge*(P.face||1):0),fy=P.y+P.h+ds*1.25,im=arr[fi]||arr[0];P._hb=im.bob||0;if(P.face<0){cx.save();cx.translate(X(fx+w/2),Y(fy-h));cx.scale(-1,1);cx.drawImage(im,0,0,w*Z,h*Z);cx.restore()}else cx.drawImage(im,X(fx-w/2),Y(fy-h),w*Z,h*Z)}
  if(P.blockT>0){cx.globalCompositeOperation='lighter';glow(X(P.x+P.w/2),Y(P.y+P.h/2),22*Z,'rgba(106,42,154,.6)');cx.strokeStyle='#c890ff';cx.lineWidth=Z;cx.beginPath();cx.arc(X(P.x+P.w/2),Y(P.y+P.h/2),(12+Math.sin(tick/3))*Z,0,7);cx.stroke();cx.globalCompositeOperation='source-over'}
  if(P.parryT>0){const k=P.parryT/12,px=X(P.x+P.w/2),py=Y(P.y+P.h/2);cx.strokeStyle=tick%4<2?'#fff6c0':'#ffd24a';cx.lineWidth=Z*2.4;cx.beginPath();cx.arc(px,py,(15+Math.sin(tick/2)*1.5)*Z,-Math.PI/2,-Math.PI/2+Math.max(.15,k)*Math.PI*2);cx.stroke();cx.fillStyle='#fff6c0';cx.font=`bold ${Math.max(10,Z*3)}px "Courier New",monospace`;cx.textAlign='center';cx.fillText('PARRY',px,py-(18*Z))}
- if(QW().kind!='thrust'&&P.atkT>=6&&P.atkT<=13&&P.atkDir=='low'){const b=swordBox(),k=(13-P.atkT)/7,dir=P.face,x0=X(P.x+P.w/2),gy=Y(P.y+P.h-2),len=b.w*Z;cx.globalCompositeOperation='lighter';glow(X(b.x+b.w/2),gy,len*.5,'rgba(176,90,224,.35)');for(const[lw,col]of[[Z*5,'rgba(106,42,154,.7)'],[Z*3,'#e0a0ff'],[Z*1.2,'#ffffff']]){cx.strokeStyle=col;cx.lineWidth=lw;cx.beginPath();cx.ellipse(x0,gy,len*.85,4*Z,0,dir>0?-.35:Math.PI-.35+.0,dir>0?-.35+Math.PI*.9*k:Math.PI-.35+Math.PI*.9*k,false);cx.stroke()}for(let i=0;i<3;i++)L.parts.push({x:b.x+(dir>0?b.w*k:b.w*(1-k)),y:P.y+P.h-1,vx:dir*(.3+Math.random()*.5),vy:-Math.random()*.8,life:10,c:'#e0a0ff'});cx.globalCompositeOperation='source-over'}
- else if(QW().kind!='thrust'&&P.atkT>=6&&P.atkT<=13){const b=swordBox(),k=(13-P.atkT)/7,base=P.atkDir=='up'?-Math.PI/2:P.atkDir=='down'?Math.PI/2:(P.face>0?0:Math.PI),rad=(Math.max(b.w,b.h)-3)*Z,dir=P.face>0?1:-1;
+ if(QW().kind!='thrust'&&wepHitActive()&&P.atkDir=='low'){const b=swordBox(),win=wepActiveWin(),k=win?Math.max(0,Math.min(1,(win.u-win.lo)/Math.max(.001,win.hi-win.lo))):(1-P.atkT/(P.mvLen||14)),dir=P.face,x0=X(P.x+P.w/2),gy=Y(P.y+P.h-2),len=b.w*Z;cx.globalCompositeOperation='lighter';glow(X(b.x+b.w/2),gy,len*.5,'rgba(176,90,224,.35)');for(const[lw,col]of[[Z*5,'rgba(106,42,154,.7)'],[Z*3,'#e0a0ff'],[Z*1.2,'#ffffff']]){cx.strokeStyle=col;cx.lineWidth=lw;cx.beginPath();cx.ellipse(x0,gy,len*.85,4*Z,0,dir>0?-.35:Math.PI-.35+.0,dir>0?-.35+Math.PI*.9*k:Math.PI-.35+Math.PI*.9*k,false);cx.stroke()}for(let i=0;i<3;i++)L.parts.push({x:b.x+(dir>0?b.w*k:b.w*(1-k)),y:P.y+P.h-1,vx:dir*(.3+Math.random()*.5),vy:-Math.random()*.8,life:10,c:'#e0a0ff'});cx.globalCompositeOperation='source-over'}
+ else if(QW().kind!='thrust'&&wepHitActive()){const b=swordBox(),win=wepActiveWin(),k=win?Math.max(0,Math.min(1,(win.u-win.lo)/Math.max(.001,win.hi-win.lo))):(1-P.atkT/(P.mvLen||14)),base=P.atkDir=='up'?-Math.PI/2:P.atkDir=='down'?Math.PI/2:(P.face>0?0:Math.PI),rad=(Math.max(b.w,b.h)-3)*Z,dir=P.face>0?1:-1;
   cx.globalCompositeOperation='lighter';glow(X(b.x+b.w/2),Y(b.y+b.h/2),rad*.9,'rgba(176,90,224,.35)');for(const[lw,col]of[[Z*6,'rgba(106,42,154,.7)'],[Z*3.5,'#e0a0ff'],[Z*1.4,'#ffffff']]){cx.strokeStyle=col;cx.lineWidth=lw;cx.beginPath();const a0=base-1.3*dir,a1=a0+2.6*k*dir;cx.arc(X(P.x+P.w/2),Y(P.y+P.h/2),rad*.85,Math.min(a0,a1),Math.max(a0,a1));cx.stroke()}cx.globalCompositeOperation='source-over'}
  cx.globalCompositeOperation='lighter';for(const p of L.parts){cx.fillStyle=p.c;cx.globalAlpha=Math.min(1,p.life/10);cx.fillRect(X(p.x),Y(p.y),Z*1.5,Z*1.5)}cx.globalAlpha=1;cx.globalCompositeOperation='source-over';
  if(hasT('myopia')||has('lantern')){const vr=has('lantern')?.55:1;const g=cx.createRadialGradient(X(P.x+3),Y(P.y+4),50*Z*vr,X(P.x+3),Y(P.y+4),110*Z*vr);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.97)');cx.fillStyle=g;cx.fillRect(0,0,VW,VH)}
@@ -1315,6 +1328,7 @@ function mainMenu(){mode='title';applyBright(false);setMusic('menu');const sv=!r
   ...(HUBON&&!runActive()?[{t:'Return to Ashenmere',f:enterHub}]:[]),{t:'Settings',f:()=>settings('controls',mainMenu)},{t:notesLabel(),f:()=>whatsNew(mainMenu)},{t:'Bug report',f:()=>bugReport(mainMenu)},{t:'Journal',f:()=>journal(mainMenu)},{t:'Records',f:()=>statsScreen(mainMenu)},{t:'Chronicle',f:()=>playIntro(mainMenu)}],{menu:1});hud()}
 // Patch notes live here. Put the newest entry first. Nothing is fetched.
 const PATCHES=[
+ {id:'hitboxsync',date:'Nov 24, 2026',t:'Hits land when the blade connects',d:'Melee hits now follow the drawn blade and land in time with the swing, so slow weapons no longer whiff at the tip. Vertical swings aim the blade up or down to match the strike. The purple slash shows only while damage is active. Halberd sweep-then-hook, bow, pogo, damage, and parry stun are unchanged.'},
  {id:'warlordv4',date:'Nov 24, 2026',t:'Warlord sword on one axis',d:'The Warlord’s planted greatsword is redrawn as one straight rigid weapon: pommel, wrapped grip, crossguard, and steel blade share a single axis from pommel to tip, with his clawed hand wrapped on the grip. Idle, telegraph, and hellslash frames keep the same alignment. Size, hitboxes, phases, health, and timings are unchanged.'},
  {id:'warlordv3',date:'Nov 24, 2026',t:'Warlord fits the throne',d:'The Warlord is scaled down so his full wingspan, horns, and planted blade stay inside the throne room and the normal camera. Body and hellslash hitboxes shrink with him. His movement is clamped so the wings never leave the arena. Digitigrade greaves and the steel greatsword (fuller, edge, crossguard, hilt) stay crisp. Phases, health, and timings are unchanged.'},
  {id:'warlordv2',date:'Nov 24, 2026',t:'Warlord legs and blade',d:'The Warlord’s shins and boots are redrawn as digitigrade armor: bent knee, angled shin, hock joint, and clawed sabatons with overlapping greaves. His planted greatsword now shows a clear steel blade with fuller, lit and shadowed edges, crossguard, wrapped grip, and pommel, with flames licking along the steel rather than replacing it.'},
@@ -2677,17 +2691,14 @@ function spearPose(){if(!P||!(P.atkT>0)||QW().kind!='thrust')return null;const l
  return{ang:0,ext,lunge,hit:ext>=.4,dmg:.5,sub:which,vx,shape:'thrust',mode:'thrust',crouch:0,ghost:[]}}
 function aimBlock(){return isModal()||mode!='combat'}
 function bowAim(){if(!P||!L||L.camX==null||aimBlock())return null;if(typeof TC!='undefined'&&TC.on)return null;if(typeof LASTPT!='undefined'&&LASTPT=='touch')return null;const gp=navigator.getGamepads&&[...navigator.getGamepads()].find(g=>g);if(gp&&gp.buttons[2]&&gp.buttons[2].pressed&&!held.has('mouse0'))return null;const r=cv.getBoundingClientRect();if(!r.width||!r.height)return null;const sx=(MS.x-r.left)/r.width*cv.width,sy=(MS.y-r.top)/r.height*cv.height,wx=L.camX+sx/Z,wy=L.camY+sy/Z,hx=P.x+P.w/2,hy=P.y+P.h*.4,dx=wx-hx,dy=wy-hy;if(Math.hypot(dx,dy)<1.5)return{dx:P.face||1,dy:0,face:P.face||1,ang:0};const world=Math.atan2(dy,dx),face=Math.abs(dx)<3?(P.face||1):(dx<0?-1:1);let ang=face>0?world:Math.PI-world;while(ang>Math.PI)ang-=Math.PI*2;while(ang<-Math.PI)ang+=Math.PI*2;return{dx,dy,face,ang}}
-function wepAng(){const id=P.wep||'sword',k=QW().kind,len=P.mvLen||14,u=P.atkT>0?1-P.atkT/len:1,ci=P.chainI||0;
+function wepAng(){const id=P.wep||'sword',k=QW().kind,len=P.mvLen||14,u=P.atkT>0?1-P.atkT/len:1,ci=P.chainI||0,dir=P.atkDir||'side';
  if(id=='bow'){const a=bowAim();if(a)return a.ang;if(P.bowC)return -.15-Math.min(1,P.bowC/42)*.35;return P.bowSnap?-.05:0}
  if(P.bowC)return -.15-Math.min(1,P.bowC/42)*.35;
  if(!(P.atkT>0))return P.bowSnap?-.05:idleWepAng(id);
- if(id=='sword')return [-1.1,-.15,.15,.9][ci]+u*1.15;
- if(k=='thrust')return 0;
- if(k=='cleave')return -1.6+u*2.9;
- if(k=='sweep')return u<.55?-1.1+u*2.4:.5-(u-.55)*1.6;
- if(id=='gs')return -1.15+u*2.05;
- if(k=='ultra')return -2.25+u*3.5;
- return -.8+u*1.4}
+ let ang;if(id=='sword')ang=[-1.1,-.15,.15,.9][ci]+u*1.15;else if(k=='thrust')ang=0;else if(k=='cleave')ang=-1.6+u*2.9;else if(k=='sweep')ang=u<.55?-1.1+u*2.4:.5-(u-.55)*1.6;else if(id=='gs')ang=-1.15+u*2.05;else if(k=='ultra')ang=-2.25+u*3.5;else ang=-.8+u*1.4;
+ if(dir=='up'){if(id=='sword')return -.35+[-.15,0,.05,.1][ci]+u*(-Math.PI/2+.35);if(k=='cleave')return -.2+u*-1.35;if(k=='sweep')return -.25+u*-1.3;if(id=='gs')return -.3+u*-1.35;if(k=='ultra')return -.15+u*-1.45;return -.3+u*(-Math.PI/2+.3)}
+ if(dir=='down'){if(id=='sword')return .45+u*(Math.PI/2-.45);if(k=='cleave')return .55+u*(Math.PI/2-.55);if(k=='sweep')return .5+u*(Math.PI/2-.5);if(id=='gs')return .5+u*(Math.PI/2-.5);if(k=='ultra')return .4+u*(Math.PI/2-.4);return .5+u*(Math.PI/2-.5)}
+ return ang}
 function handScreen(){const ds=P.ds||1,sx=P.sx||1,sy=P.sy||1,sc=Z||1,w=20*ds*sx,h=20*ds*sy,spL=spearPose(),fx=P.x+P.w/2+(spL?spL.lunge*(P.face||1):0),fy=P.y+P.h+ds*1.25,top=fy-h,bob=P._hb||0,pix=w*sc/64,piy=h*sc/64;
  if(P.face<0){const tx=Math.round((fx+w/2-L.camX)*sc),ty=Math.round((top-L.camY)*sc);return {x:tx-42.5*pix,y:ty+(42.5+bob)*piy,pix}}
  const tx=Math.round((fx-w/2-L.camX)*sc),ty=Math.round((top-L.camY)*sc);return {x:tx+42.5*pix,y:ty+(42.5+bob)*piy,pix}}
