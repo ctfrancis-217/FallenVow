@@ -359,10 +359,10 @@ function wepProg(){const len=P.mvLen||MV.atkT||14;return{len,t:P.atkT,u:P.atkT>0
 function wepWinSpec(){const id=P.wep||'sword',k=QW().kind;
  if(k=='cleave')return{lo:.18,hi:.88,shape:'chop',dmg:1,sub:0,impact:.42};
  if(k=='sweep')return[{lo:.12,hi:.44,shape:'sweep',dmg:.65,sub:0},{lo:.56,hi:.75,shape:'hook',dmg:.35,sub:1}];
- if(id=='gs')return{lo:.18,hi:.78,shape:'arc',dmg:1,sub:0};
+ if(id=='gs')return{lo:.12,hi:.78,shape:'arc',dmg:1,sub:0};
  if(k=='ultra')return{lo:.22,hi:.86,shape:'cleave',dmg:1,sub:0,impact:.4};
- if(id=='sword'||k=='swing')return{lo:.15,hi:.72,shape:'slash',dmg:1,sub:0};
- return{lo:.15,hi:.72,shape:'slash',dmg:1,sub:0}}
+ if(id=='sword'||k=='swing')return{lo:.12,hi:.72,shape:'slash',dmg:1,sub:0};
+ return{lo:.12,hi:.72,shape:'slash',dmg:1,sub:0}}
 function wepActiveWin(){const k=QW().kind;if(k=='bow')return null;if(k=='thrust'){const sp=spearPose();return sp&&sp.hit?{lo:.18,hi:.78,u:wepProg().u,shape:sp.shape||'thrust',dmg:sp.dmg,sub:sp.sub}:null}
  const {u,len}=wepProg(),spec=wepWinSpec(),list=Array.isArray(spec)?spec:[spec];
  for(const w of list)if(u>=w.lo&&u<=w.hi)return{lo:w.lo,hi:w.hi,u,len,shape:w.shape,dmg:w.dmg,sub:w.sub,impact:w.impact};return null}
